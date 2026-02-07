@@ -1,4 +1,7 @@
-"""BaseAgent ABC implementing Template Method pattern: prepare() -> execute() -> parse_output()."""
+"""BaseAgent ABC implementing Template Method pattern.
+
+Pattern: prepare() -> execute() -> parse_output().
+"""
 
 # TODO: Implement BaseAgent abstract base class
 #   - Abstract methods: prepare(), execute(), parse_output()

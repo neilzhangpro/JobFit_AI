@@ -1,4 +1,8 @@
-"""OptimizationSession (Aggregate Root) with status transitions, OptimizationResult (Entity)."""
+"""Domain entities for optimization.
+
+OptimizationSession (Aggregate Root) with status transitions,
+OptimizationResult (Entity).
+"""
 
 # TODO: Implement OptimizationSession aggregate root
 #   - Status transitions: pending -> processing -> completed/failed

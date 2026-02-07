@@ -1,4 +1,6 @@
-"""FastAPI routes: POST /auth/register, POST /auth/login, POST /auth/refresh, GET /tenants.
+"""FastAPI routes.
+
+POST /auth/register, POST /auth/login, POST /auth/refresh, GET /tenants.
 
 API routes handle HTTP requests and delegate to application services.
 """

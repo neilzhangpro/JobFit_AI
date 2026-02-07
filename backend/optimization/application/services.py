@@ -1,4 +1,7 @@
-"""OptimizationApplicationService — orchestrates the full optimization pipeline via LangGraph."""
+"""OptimizationApplicationService.
+
+Orchestrates the full optimization pipeline via LangGraph.
+"""
 
 # TODO: Implement OptimizationApplicationService
 #   - run_optimization: orchestrates the full pipeline
