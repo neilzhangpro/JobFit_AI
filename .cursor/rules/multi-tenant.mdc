@@ -1,0 +1,44 @@
+---
+description: Multi-tenant data isolation rules - every query must be tenant-scoped
+alwaysApply: true
+---
+
+# Multi-Tenant Isolation Rules
+
+## Critical Rule
+
+Every data access MUST be scoped by `tenant_id`. An unscoped query is a SECURITY BUG.
+
+## Isolation by Data Store
+
+- **PostgreSQL**: Every table has `tenant_id NOT NULL`. Every query includes `WHERE tenant_id = ?`.
+- **ChromaDB**: Collection per tenant (`tenant_{tenant_id}`).
+- **S3/MinIO**: Path prefix `/{tenant_id}/{user_id}/`.
+- **Redis**: Key prefix `tenant:{tenant_id}:`.
+
+## Implementation Rules
+
+- `tenant_id` is extracted from JWT token via middleware, NEVER from request parameters
+- Use `ContextVar` to propagate tenant context — repositories read it automatically
+- Base repository class MUST enforce tenant filtering — individual repos inherit this
+
+## Mandatory Test
+
+Every repository MUST include a tenant isolation test:
+
+```python
+async def test_tenant_a_cannot_see_tenant_b_data(
+    tenant_a_repo: ResumeRepository,
+    tenant_b_repo: ResumeRepository,
+):
+    """Verify strict tenant isolation at the repository level."""
+    # Arrange
+    resume = ResumeFactory(tenant_id=TENANT_A_ID)
+    await tenant_a_repo.save(resume)
+
+    # Act
+    result = await tenant_b_repo.find_by_id(resume.id)
+
+    # Assert — Tenant B must NOT see Tenant A's data
+    assert result is None
+```

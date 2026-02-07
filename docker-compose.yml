@@ -1,0 +1,99 @@
+# =============================================================================
+# JobFit AI — Docker Compose Base Configuration
+# =============================================================================
+# This file defines all services with NO environment-specific settings.
+# Use with an override file:
+#   Dev:  docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#   Prod: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  # --- Application Services ---
+  frontend:
+    container_name: jobfit-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      - backend
+    networks:
+      - jobfit-network
+
+  backend:
+    container_name: jobfit-backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      chromadb:
+        condition: service_started
+      minio:
+        condition: service_started
+    env_file:
+      - .env
+    networks:
+      - jobfit-network
+
+  # --- Data Services ---
+  postgres:
+    container_name: jobfit-postgres
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-jobfit_dev}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - jobfit-network
+
+  redis:
+    container_name: jobfit-redis
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - jobfit-network
+
+  chromadb:
+    container_name: jobfit-chromadb
+    image: chromadb/chroma:latest
+    volumes:
+      - chroma-data:/chroma/chroma
+    networks:
+      - jobfit-network
+
+  minio:
+    container_name: jobfit-minio
+    image: minio/minio:latest
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+    volumes:
+      - minio-data:/data
+    networks:
+      - jobfit-network
+
+networks:
+  jobfit-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
+  chroma-data:
+  minio-data:

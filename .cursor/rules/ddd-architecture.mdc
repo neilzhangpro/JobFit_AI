@@ -1,0 +1,41 @@
+---
+description: DDD layered architecture rules - enforce layer dependency boundaries
+alwaysApply: true
+---
+
+# DDD Architecture Rules
+
+## Layer Dependencies (STRICTLY enforced)
+
+```
+API Layer → Application Layer → Domain Layer
+                  ↓
+          Infrastructure Layer
+```
+
+- **Domain Layer**: ZERO external imports. No FastAPI, SQLAlchemy, or any framework. Pure Python only.
+- **Application Layer**: Imports from Domain only. Uses interfaces (not implementations). Orchestrates use cases.
+- **Infrastructure Layer**: Implements Domain interfaces. May import external libraries.
+- **API Layer**: Imports from Application only. Uses DTOs, never domain entities directly.
+
+## Bounded Contexts
+
+This project has 5 contexts: `identity/`, `resume/`, `optimization/`, `interview/`, `billing/`.
+Each context has: `domain/`, `application/`, `infrastructure/`, `api/`.
+
+## Key Patterns
+
+- **Repository**: All data access via interfaces (defined in domain, implemented in infra)
+- **Factory**: Use for aggregate/entity creation with validation
+- **Unit of Work**: Wrap write operations for transactional consistency
+- **Strategy**: LLM providers, PDF parsers — runtime selection via interface
+- **Template Method**: AI agents inherit `BaseAgent` with `prepare → execute → parse_output`
+- **Adapter**: Wrap external APIs (ChromaDB, S3, Stripe) in adapter classes
+- **Dependency Injection**: Use FastAPI `Depends()` — never instantiate dependencies internally
+
+## Anti-Patterns to AVOID
+
+- **Anemic Domain Model**: entities with no behavior — put logic IN entities
+- **God Service**: one class doing everything — split by bounded context
+- **Leaky Abstraction**: SQLAlchemy models used as domain entities — keep them separate
+- **Shared Mutable State**: use `ContextVar` for request-scoped state, DI for dependencies

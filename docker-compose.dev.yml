@@ -1,0 +1,50 @@
+# =============================================================================
+# JobFit AI — Docker Compose Development Overrides
+# =============================================================================
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  frontend:
+    build:
+      target: dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+
+  backend:
+    build:
+      target: dev
+    ports:
+      - "8000:8000"
+      - "5678:5678"     # Python debugger port
+    volumes:
+      - ./backend:/app
+    environment:
+      - APP_ENV=development
+      - LOG_LEVEL=DEBUG
+      - UVICORN_WORKERS=1
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  postgres:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  chromadb:
+    ports:
+      - "8200:8000"
+
+  minio:
+    ports:
+      - "9000:9000"
+      - "9001:9001"     # MinIO Console
+    command: server /data --console-address ":9001"

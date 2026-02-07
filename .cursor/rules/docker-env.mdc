@@ -1,0 +1,49 @@
+---
+description: Docker Compose and environment management rules - dev vs prod separation
+globs: "{docker-compose*.yml,Dockerfile,**/Dockerfile,.env*,Makefile}"
+alwaysApply: false
+---
+
+# Docker and Environment Rules
+
+## Multi-File Compose Strategy
+
+- `docker-compose.yml`: Base services only — NO environment-specific settings
+- `docker-compose.dev.yml`: Dev overrides (ports, volume mounts, hot reload, debug)
+- `docker-compose.prod.yml`: Prod overrides (resource limits, health checks, restart policies)
+- NEVER use `docker-compose.override.yml` (auto-loading is implicit and error-prone)
+
+## Commands
+
+```bash
+# Development
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+# Production
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+## Dockerfile Rules
+
+- Multi-stage builds required: `base` → `dev` / `prod` stages
+- Production stage: non-root user (`USER appuser`), slim image, no dev tools
+- NEVER pass secrets via `ARG` or `ENV` in Dockerfile — inject at runtime
+- Pin base image versions exactly (e.g., `python:3.11.9-slim`, not `python:3.11-slim`)
+
+## Secrets
+
+- NEVER commit `.env` files — only `.env.example` with placeholders is committed
+- NEVER put real secrets in Docker build args or Dockerfiles
+- Production `.env` on server: `chmod 600`, owned by deploy user only
+- Use `gitleaks` pre-commit hook to prevent accidental secret commits
+
+## Environment Differences
+
+| Concern | Development | Production |
+|---------|-------------|------------|
+| Source mounting | Volume bind mounts | Code baked in image |
+| Hot reload | Yes (--reload) | No |
+| DB port exposed | Yes (host access) | No (internal only) |
+| Log level | DEBUG | WARNING |
+| Workers | 1 | 4+ |
+| Restart policy | no | unless-stopped |

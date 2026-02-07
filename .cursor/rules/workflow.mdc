@@ -1,0 +1,35 @@
+---
+description: Core development workflow - test first, then implement, then refactor
+alwaysApply: true
+---
+
+# Development Workflow
+
+Every feature or bugfix MUST follow this strict order:
+
+## Step 1: Understand
+- Read the relevant docs in `docs/` before coding
+- Identify which bounded context this belongs to (identity, resume, optimization, interview, billing)
+- Check existing code for reusable variables, functions, and patterns — avoid redundant code
+
+## Step 2: Test First
+- Write failing tests BEFORE writing implementation code
+- Domain logic: unit tests with `test_<method>_<scenario>_<expected>` naming
+- API endpoints: integration tests with authenticated test client
+- Repository: include a tenant isolation test (`tenant_a_cannot_see_tenant_b_data`)
+- Use `factory_boy` (Python) for test data — never hardcode entity construction
+
+## Step 3: Implement
+- Write the simplest code that makes the tests pass — no over-engineering
+- Follow DDD layers: Domain → Application → Infrastructure → API
+- Every class and public function MUST have a docstring (Google style for Python)
+- Every file with key logic MUST have inline comments at critical decision points
+
+## Step 4: Verify
+- Run `ruff check` + `mypy --strict` (backend) or `eslint` + `tsc --noEmit` (frontend)
+- Ensure test coverage >= 80% overall, >= 90% for domain layer
+- No `any` type (TS), no bare `except` (Python), no magic numbers, no hardcoded strings
+
+## Step 5: Commit
+- Use Conventional Commits: `feat(optimization):`, `fix(resume):`, `test(identity):`
+- Scope must match bounded context: identity, resume, optimization, interview, billing, shared, frontend

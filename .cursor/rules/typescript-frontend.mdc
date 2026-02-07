@@ -1,0 +1,47 @@
+---
+description: TypeScript frontend standards - Next.js, React patterns, strict types
+globs: frontend/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# TypeScript Frontend Standards
+
+## Code Style
+
+- Formatter: Prettier (printWidth: 100, singleQuote: true)
+- Linter: ESLint with @typescript-eslint recommended
+- Type checking: strict mode — `any` is BANNED, use `unknown` with type guards
+- Imports: absolute paths with `@/` alias (e.g., `@/components/ui/Button`)
+- One component per file, filename matches component name
+
+## Component Patterns
+
+- **Container/Presenter**: `OptimizationContainer` (data + logic) + `OptimizationView` (pure UI)
+- **Custom Hooks**: `useAuth()`, `useResume()`, `useOptimization()` for reusable logic
+- **Providers**: `AuthProvider`, `TenantProvider` for global context via React Context
+- **Compound Components**: `InterviewPrep.QuestionList`, `InterviewPrep.AnswerPanel`
+
+## Naming
+
+- `camelCase`: variables, functions, hooks
+- `PascalCase`: components, types, interfaces
+- `UPPER_SNAKE_CASE`: constants
+
+## Testing (Jest + React Testing Library)
+
+```typescript
+describe('ScoreCard', () => {
+  it('should render score as percentage when score is provided', () => { ... });
+  it('should show empty state when score is null', () => { ... });
+});
+```
+
+- Test user interactions, not implementation details
+- Use MSW for API mocking
+
+## Forbidden
+
+- `any` type — use `unknown` with type guards
+- `localStorage` for tokens — access token in memory, refresh token in httpOnly cookie
+- Direct API calls in components — use custom hooks
+- Inline styles — use Tailwind CSS utility classes

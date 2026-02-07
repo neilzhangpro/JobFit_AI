@@ -1,0 +1,54 @@
+---
+description: Python backend coding standards - FastAPI, Ruff, mypy strict, Google docstrings
+globs: backend/**/*.py
+alwaysApply: false
+---
+
+# Python Backend Standards
+
+## Code Style
+
+- Formatter: Ruff (line length 88)
+- Linter: Ruff (E, F, W, I, UP, B, SIM, N)
+- Type checking: mypy strict mode — all functions must have type annotations
+- Docstrings: Google style on all public classes and functions
+- Naming: `snake_case` functions/variables, `PascalCase` classes, `UPPER_SNAKE_CASE` constants
+
+## Required Pattern
+
+```python
+def calculate_ats_score(
+    optimized_content: list[str],
+    jd_analysis: JDAnalysis,
+) -> ATSScore:
+    """Calculate ATS compatibility score.
+
+    Args:
+        optimized_content: Rewritten resume bullet points.
+        jd_analysis: Structured JD requirements.
+
+    Returns:
+        ATSScore value object with breakdown.
+
+    Raises:
+        ValueError: If optimized_content is empty.
+    """
+    if not optimized_content:
+        raise ValueError("optimized_content must not be empty")
+    ...
+```
+
+## Forbidden
+
+- `except:` or `except Exception:` without re-raise or logging
+- Magic numbers — extract to named constants
+- Hardcoded strings for config — use environment variables via `Settings`
+- `from sqlalchemy import ...` in domain layer files
+- Queries without `tenant_id` filter in repository implementations
+
+## Testing
+
+- Naming: `test_<method>_<scenario>_<expected_result>`
+- Use `factory_boy` for test data, `pytest` fixtures for setup
+- Mark with `pytest.mark.integration` for DB tests
+- Mark with `pytest.mark.tenant_isolation` for isolation tests

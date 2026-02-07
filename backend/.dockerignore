@@ -1,0 +1,16 @@
+.env
+.env.*
+*.pem
+*.key
+.git/
+.github/
+docs/
+tests/
+*.md
+__pycache__/
+*.pyc
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage

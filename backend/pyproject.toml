@@ -1,0 +1,33 @@
+[project]
+name = "jobfit-ai-backend"
+version = "0.1.0"
+description = "JobFit AI — Intelligent Resume Optimization Agent (Backend)"
+requires-python = ">=3.11"
+
+# --- Ruff (Linter + Formatter) ---
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "N"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["shared", "identity", "resume", "optimization", "interview", "billing"]
+
+# --- mypy (Type Checker) ---
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+# --- pytest ---
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = [
+    "integration: marks tests that require database or external services",
+    "tenant_isolation: marks tests that verify multi-tenant data isolation",
+]
