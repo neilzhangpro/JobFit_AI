@@ -11,7 +11,8 @@ export default function HomePage() {
           Intelligent Resume Optimization Agent
         </p>
         <p className="mt-2 text-gray-500">
-          Upload your resume, paste a job description, and let AI optimize your application.
+          Upload your resume, paste a job description, and let AI optimize your
+          application.
         </p>
         <div className="mt-8 flex gap-4 justify-center">
           <a

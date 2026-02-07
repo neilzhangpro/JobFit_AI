@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 // Base input component with label and error state.
 // TODO: Implement label and error state

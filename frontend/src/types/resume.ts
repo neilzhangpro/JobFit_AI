@@ -2,7 +2,12 @@
  * TypeScript types for resume: Resume, ResumeSection, SectionType, UploadResumeResponse.
  */
 
-export type SectionType = 'experience' | 'education' | 'skills' | 'summary' | 'other';
+export type SectionType =
+  | "experience"
+  | "education"
+  | "skills"
+  | "summary"
+  | "other";
 
 export interface ResumeSection {
   // TODO: Define resume section properties

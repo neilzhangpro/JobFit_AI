@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 // JD text area input with character count (Presenter component).
 // TODO: Implement JD input with character count

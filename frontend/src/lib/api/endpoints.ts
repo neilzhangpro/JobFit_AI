@@ -4,24 +4,24 @@
  */
 export const API_ENDPOINTS = {
   AUTH: {
-    LOGIN: '/api/auth/login',
-    REGISTER: '/api/auth/register',
-    REFRESH: '/api/auth/refresh',
+    LOGIN: "/api/auth/login",
+    REGISTER: "/api/auth/register",
+    REFRESH: "/api/auth/refresh",
   },
   RESUMES: {
-    UPLOAD: '/api/resumes/upload',
-    LIST: '/api/resumes',
+    UPLOAD: "/api/resumes/upload",
+    LIST: "/api/resumes",
   },
   OPTIMIZE: {
-    RUN: '/api/optimize',
-    SESSIONS: '/api/sessions',
+    RUN: "/api/optimize",
+    SESSIONS: "/api/sessions",
   },
   INTERVIEW: {
-    PREP: '/api/interview-prep',
-    COVER_LETTER: '/api/cover-letter',
+    PREP: "/api/interview-prep",
+    COVER_LETTER: "/api/cover-letter",
   },
   BILLING: {
-    USAGE: '/api/billing/usage',
-    SUBSCRIPTION: '/api/billing/subscription',
+    USAGE: "/api/billing/usage",
+    SUBSCRIPTION: "/api/billing/subscription",
   },
 } as const;

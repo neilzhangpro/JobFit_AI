@@ -3,15 +3,15 @@
  */
 export function formatScore(score: number): string {
   // TODO: Implement score formatting
-  return '';
+  return "";
 }
 
 export function formatDate(date: string): string {
   // TODO: Implement date formatting
-  return '';
+  return "";
 }
 
 export function formatFileSize(bytes: number): string {
   // TODO: Implement file size formatting
-  return '';
+  return "";
 }

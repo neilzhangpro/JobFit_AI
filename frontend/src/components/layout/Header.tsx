@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 // Dashboard header with user menu.
 // TODO: Implement header with user menu

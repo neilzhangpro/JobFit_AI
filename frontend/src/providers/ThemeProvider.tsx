@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { createContext } from 'react';
+import React, { createContext } from "react";
 
 /**
  * React Context provider for theme/dark mode.

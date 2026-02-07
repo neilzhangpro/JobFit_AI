@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 // Login page with email/password form.
 // TODO: Implement login form
