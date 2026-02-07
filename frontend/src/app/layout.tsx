@@ -11,6 +11,12 @@ export const metadata: Metadata = {
   description: "Intelligent Resume Optimization Agent",
 };
 
+/**
+ * Root layout component that provides the top-level HTML structure for all pages.
+ *
+ * @param children - The content to render inside the document body.
+ * @returns The root `<html>` element containing a `<body>` with the given `children`.
+ */
 export default function RootLayout({
   children,
 }: {
