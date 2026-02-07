@@ -1,5 +1,7 @@
 /**
- * Landing page — public marketing page for JobFit AI.
+ * Render the public marketing landing page for JobFit AI.
+ *
+ * @returns The root JSX element representing the landing page.
  */
 
 export default function HomePage() {
