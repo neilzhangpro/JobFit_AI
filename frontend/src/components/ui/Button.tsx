@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 // Base button component with variants (primary, secondary, ghost).
 /**
@@ -11,10 +11,7 @@
  * @returns The rendered `<button>` element with forwarded attributes and children
  */
 
-export function Button({
-  children,
-  ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+export function Button({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
   // TODO: Implement button variants
   return <button {...props}>{children}</button>;
 }

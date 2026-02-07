@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 // Accordion Q&A display with question categories (Compound Component).
 // TODO: Implement accordion Q&A display

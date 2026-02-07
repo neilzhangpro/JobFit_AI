@@ -6,11 +6,7 @@
  * @returns A React element that renders `children` inside the dashboard layout container.
  */
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   // TODO: Add sidebar + header
   return <div>{children}</div>;
 }

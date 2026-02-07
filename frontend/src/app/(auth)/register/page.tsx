@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 // Registration page with email, password, tenant name.
 // TODO: Implement registration form
