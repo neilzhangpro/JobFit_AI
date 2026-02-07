@@ -11,3 +11,8 @@ gap analysis, score-check loop, session status transitions.
 # TODO(#48): test_score_check_loops_when_score_below_threshold
 # TODO(#49): test_optimization_session_status_transitions
 # TODO(#50): test_tenant_a_cannot_see_tenant_b_sessions
+
+
+def test_placeholder() -> None:
+    """Placeholder to ensure pytest collects this module."""
+    assert True
