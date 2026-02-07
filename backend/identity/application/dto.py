@@ -1,6 +1,7 @@
 """RegisterRequest, LoginRequest, TokenResponse, UserDTO DTOs.
 
-DTOs (Data Transfer Objects) are used for data exchange between API and application layers.
+DTOs (Data Transfer Objects) are used for data exchange between API and
+application layers.
 """
 
 # TODO: Implement RegisterRequest DTO

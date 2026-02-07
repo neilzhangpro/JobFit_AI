@@ -1,4 +1,7 @@
-"""ResumeFactory — creates Resume aggregate from raw parsed text with section splitting."""
+"""ResumeFactory.
+
+Creates Resume aggregate from raw parsed text with section splitting.
+"""
 
 # TODO: Implement ResumeFactory
 # TODO: Create Resume aggregate from raw parsed text

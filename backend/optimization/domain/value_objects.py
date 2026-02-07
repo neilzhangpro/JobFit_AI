@@ -1,4 +1,10 @@
-"""JDAnalysis (hard_skills, soft_skills, responsibilities, qualifications), ATSScore (overall + breakdown), GapReport (missing_skills, recommendations), SessionStatus enum (pending/processing/completed/failed)."""
+"""Value objects for optimization domain.
+
+JDAnalysis (hard_skills, soft_skills, responsibilities,
+qualifications), ATSScore (overall + breakdown), GapReport
+(missing_skills, recommendations), SessionStatus enum
+(pending/processing/completed/failed).
+"""
 
 # TODO: Implement JDAnalysis value object
 #   - Fields: hard_skills, soft_skills, responsibilities, qualifications

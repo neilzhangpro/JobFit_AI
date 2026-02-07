@@ -1,4 +1,7 @@
-"""ResumeParsingDomainService — orchestrates PDF text extraction into structured sections."""
+"""ResumeParsingDomainService.
+
+Orchestrates PDF text extraction into structured sections.
+"""
 
 # TODO: Implement ResumeParsingDomainService
 # TODO: Orchestrate PDF text extraction workflow

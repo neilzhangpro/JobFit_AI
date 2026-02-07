@@ -17,7 +17,9 @@ class Settings(BaseSettings):
     max_upload_size_mb: int = 10
 
     # --- Database ---
-    database_url: str = "postgresql+asyncpg://postgres:postgres@postgres:5432/jobfit_dev"
+    database_url: str = (
+        "postgresql+asyncpg://postgres:postgres@postgres:5432/jobfit_dev"
+    )
 
     # --- Redis ---
     redis_url: str = "redis://redis:6379/0"

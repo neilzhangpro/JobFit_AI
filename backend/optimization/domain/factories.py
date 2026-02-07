@@ -1,4 +1,7 @@
-"""OptimizationSessionFactory — creates session aggregates with proper initialization."""
+"""OptimizationSessionFactory.
+
+Creates session aggregates with proper initialization.
+"""
 
 # TODO: Implement OptimizationSessionFactory
 #   - create_session: takes resume_id, job_description_id, tenant_id

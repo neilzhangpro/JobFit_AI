@@ -1,6 +1,7 @@
 """AuthApplicationService (login/register) and TenantApplicationService (CRUD).
 
-Application services orchestrate use cases and coordinate between domain and infrastructure.
+Application services orchestrate use cases and coordinate between domain and
+infrastructure.
 """
 
 # TODO: Implement AuthApplicationService class

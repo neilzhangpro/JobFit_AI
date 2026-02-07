@@ -1,4 +1,6 @@
-"""UserRepository and TenantRepository — SQLAlchemy implementations of domain interfaces.
+"""UserRepository and TenantRepository.
+
+SQLAlchemy implementations of domain interfaces.
 
 Repository implementations provide data access using SQLAlchemy.
 Must enforce tenant isolation on all queries.

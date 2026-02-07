@@ -8,4 +8,5 @@ Contains the core business logic and domain models:
 - Repository Interfaces: IUserRepository, ITenantRepository
 """
 
-# TODO: Implement domain entities, value objects, services, factories, and repository interfaces
+# TODO: Implement domain entities, value objects, services, factories, and
+#       repository interfaces

@@ -1,4 +1,7 @@
-"""StripeGateway — Stripe API adapter for payment integration (Adapter pattern). Stubbed in MVP.
+"""StripeGateway.
+
+Stripe API adapter for payment integration (Adapter pattern).
+Stubbed in MVP.
 
 This module contains an adapter for Stripe payment processing. It wraps
 Stripe API calls and provides a clean interface for the application layer.
