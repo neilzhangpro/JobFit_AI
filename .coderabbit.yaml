@@ -1,0 +1,116 @@
+# =============================================================================
+# JobFit AI — CodeRabbit AI Review Configuration
+# =============================================================================
+# CodeRabbit provides deep, context-aware PR reviews.
+# Install from: https://github.com/marketplace/coderabbit-ai
+# Docs: https://docs.coderabbit.ai/
+
+language: en
+
+reviews:
+  # Review style: "assertive" catches more issues, "chill" is more lenient
+  profile: assertive
+
+  # High-level review instructions
+  request_changes_workflow: true
+  high_level_summary: true
+  poem: false
+
+  # Path-specific review instructions
+  path_instructions:
+    # --- DDD Domain Layer: zero external dependencies ---
+    - path: "backend/*/domain/**"
+      instructions: |
+        This is the DDD Domain layer. It MUST have ZERO external dependencies.
+        - No imports from FastAPI, SQLAlchemy, Pydantic, or any framework.
+        - Only stdlib and other domain layer modules are allowed.
+        - Entities must enforce their own invariants (not anemic models).
+        - Value objects must be immutable (frozen dataclass or equivalent).
+        - Flag any framework import as a 🔴 CRITICAL violation.
+
+    # --- DDD Application Layer: orchestration only ---
+    - path: "backend/*/application/**"
+      instructions: |
+        This is the Application layer. It orchestrates use cases.
+        - May import from Domain layer only.
+        - Must NOT import directly from Infrastructure (use dependency injection).
+        - All data entering/leaving this layer must use DTOs, not domain entities.
+        - Commands should be simple dataclasses with validation.
+
+    # --- DDD Infrastructure Layer: implements domain interfaces ---
+    - path: "backend/*/infrastructure/**"
+      instructions: |
+        This is the Infrastructure layer.
+        - Must implement interfaces defined in the Domain layer.
+        - Every repository query MUST include tenant_id filtering.
+        - Flag any query without WHERE tenant_id as a 🔴 SECURITY BUG.
+        - External services (ChromaDB, S3, Stripe) must be wrapped in Adapter classes.
+
+    # --- API Layer: thin, uses DTOs ---
+    - path: "backend/*/api/**"
+      instructions: |
+        This is the API layer (FastAPI routes).
+        - Must use Pydantic DTOs for request/response, never domain entities.
+        - All endpoints must have proper type annotations.
+        - Error responses must use the standard envelope format.
+
+    # --- AI Agents (Person A's domain) ---
+    - path: "backend/optimization/infrastructure/agents/**"
+      instructions: |
+        These are LangGraph AI agents for the optimization pipeline.
+        - Must inherit from BaseAgent and follow the Template Method pattern.
+        - Prompts should use structured output parsing.
+        - Token usage should be tracked for billing.
+
+    - path: "backend/interview/infrastructure/agents/**"
+      instructions: |
+        These are AI agents for interview preparation.
+        - Questions must be categorized (behavioral, technical, situational).
+        - Answer suggestions should use STAR format for behavioral questions.
+
+    # --- Shared Kernel ---
+    - path: "backend/shared/**"
+      instructions: |
+        This is the Shared Kernel used by all bounded contexts.
+        - Changes here affect the entire application — review carefully.
+        - Base classes (BaseEntity, AggregateRoot, etc.) must remain framework-free.
+        - Middleware must properly extract and propagate tenant context.
+
+    # --- Frontend ---
+    - path: "frontend/src/**/*.tsx"
+      instructions: |
+        React/Next.js frontend components.
+        - TypeScript strict mode: 'any' type is BANNED.
+        - Follow Container/Presenter pattern for data-fetching vs rendering.
+        - JWT access tokens must be stored in memory only, NEVER in localStorage.
+        - Use custom hooks (useAuth, useResume, etc.) for API calls, not inline fetch.
+        - Use Tailwind CSS utility classes, not inline styles.
+
+    # --- Docker / Infrastructure ---
+    - path: "docker-compose*.yml"
+      instructions: |
+        Docker Compose configuration.
+        - docker-compose.yml is the base: NO environment-specific settings.
+        - docker-compose.dev.yml: dev overrides only (ports, volumes, hot reload).
+        - docker-compose.prod.yml: prod overrides only (resource limits, restart policies).
+        - NEVER include secrets or credentials in these files.
+
+    # --- Tests ---
+    - path: "backend/tests/**"
+      instructions: |
+        Backend test suite.
+        - Test naming: test_<method>_<scenario>_<expected_result>.
+        - Use factory_boy for test data, never hardcode entity construction.
+        - Every repository must have a tenant isolation test.
+        - Integration tests should be marked with @pytest.mark.integration.
+
+  # Auto-review settings
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+      - develop
+
+chat:
+  auto_reply: true

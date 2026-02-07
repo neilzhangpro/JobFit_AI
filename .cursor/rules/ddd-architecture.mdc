@@ -1,5 +1,5 @@
 ---
-description: DDD layered architecture rules - enforce layer dependency boundaries
+description: DDD layered architecture rules - enforce layer dependency boundaries and team ownership
 alwaysApply: true
 ---
 
@@ -18,10 +18,20 @@ API Layer → Application Layer → Domain Layer
 - **Infrastructure Layer**: Implements Domain interfaces. May import external libraries.
 - **API Layer**: Imports from Application only. Uses DTOs, never domain entities directly.
 
-## Bounded Contexts
+## Bounded Contexts and Ownership
 
-This project has 5 contexts: `identity/`, `resume/`, `optimization/`, `interview/`, `billing/`.
+| Context | Owner | Directory |
+|---------|-------|-----------|
+| `optimization/` | **Person A** (AI Workflow) | LangGraph agents, RAG, ATS scoring |
+| `interview/` | **Person A** (AI Workflow) | Question generator, cover letter |
+| `identity/` | **Person B** (Platform) | Auth, JWT, tenants, users |
+| `resume/` | **Person B** (Platform) | PDF upload, parsing, vector store |
+| `billing/` | **Person B** (Platform) | Subscriptions, quotas, usage |
+| `shared/` | **Both** | Base classes, middleware — changes need both owners |
+| `frontend/` | **Person B** (Platform) | All frontend code |
+
 Each context has: `domain/`, `application/`, `infrastructure/`, `api/`.
+CODEOWNERS file enforces review by the correct owner.
 
 ## Key Patterns
 
@@ -39,3 +49,4 @@ Each context has: `domain/`, `application/`, `infrastructure/`, `api/`.
 - **God Service**: one class doing everything — split by bounded context
 - **Leaky Abstraction**: SQLAlchemy models used as domain entities — keep them separate
 - **Shared Mutable State**: use `ContextVar` for request-scoped state, DI for dependencies
+- **Cross-context coupling**: contexts communicate via domain events, not direct imports

@@ -1,0 +1,124 @@
+# =============================================================================
+# JobFit AI — CD Pipeline
+# =============================================================================
+# Triggered on push to main (after PR merge).
+# Builds production images, pushes to GHCR, deploys to EC2.
+
+name: CD Pipeline
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: cd-production
+  cancel-in-progress: false  # Never cancel an in-progress deploy
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE: ghcr.io/${{ github.repository }}/backend
+  FRONTEND_IMAGE: ghcr.io/${{ github.repository }}/frontend
+
+jobs:
+  # =============================================
+  # Build and Push Docker Images
+  # =============================================
+  build:
+    name: "Build & Push Images"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set image tag
+        id: meta
+        run: echo "tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # --- Backend ---
+      - name: Build backend production image
+        run: |
+          docker build \
+            --target prod \
+            --tag ${{ env.BACKEND_IMAGE }}:${{ steps.meta.outputs.tag }} \
+            --tag ${{ env.BACKEND_IMAGE }}:latest \
+            ./backend
+
+      - name: Push backend image
+        run: |
+          docker push ${{ env.BACKEND_IMAGE }}:${{ steps.meta.outputs.tag }}
+          docker push ${{ env.BACKEND_IMAGE }}:latest
+
+      # --- Frontend ---
+      - name: Build frontend production image
+        run: |
+          docker build \
+            --target prod \
+            --tag ${{ env.FRONTEND_IMAGE }}:${{ steps.meta.outputs.tag }} \
+            --tag ${{ env.FRONTEND_IMAGE }}:latest \
+            ./frontend
+
+      - name: Push frontend image
+        run: |
+          docker push ${{ env.FRONTEND_IMAGE }}:${{ steps.meta.outputs.tag }}
+          docker push ${{ env.FRONTEND_IMAGE }}:latest
+
+  # =============================================
+  # Deploy to AWS EC2
+  # =============================================
+  deploy:
+    name: "Deploy to Production"
+    runs-on: ubuntu-latest
+    needs: build
+    environment: production
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/jobfit-ai
+
+            echo "=== Pulling latest code ==="
+            git pull origin main
+
+            echo "=== Pulling latest images ==="
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
+
+            echo "=== Starting services ==="
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+            echo "=== Running database migrations ==="
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T backend alembic upgrade head
+
+            echo "=== Health check ==="
+            sleep 10
+            curl -sf http://localhost:8000/api/health || {
+              echo "Health check failed! Rolling back..."
+              docker compose -f docker-compose.yml -f docker-compose.prod.yml down
+              git checkout HEAD~1
+              docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+              exit 1
+            }
+
+            echo "=== Cleanup old images ==="
+            docker image prune -f
+
+            echo "=== Deploy successful ==="
+
+      - name: Notify on failure
+        if: failure()
+        run: echo "::error::Deployment to production FAILED. Check the deploy logs above."

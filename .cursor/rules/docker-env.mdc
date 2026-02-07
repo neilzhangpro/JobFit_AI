@@ -1,10 +1,10 @@
 ---
-description: Docker Compose and environment management rules - dev vs prod separation
-globs: "{docker-compose*.yml,Dockerfile,**/Dockerfile,.env*,Makefile}"
+description: Docker Compose, environment management, and CI/CD rules
+globs: "{docker-compose*.yml,Dockerfile,**/Dockerfile,.env*,Makefile,.github/**/*.yml}"
 alwaysApply: false
 ---
 
-# Docker and Environment Rules
+# Docker, Environment, and CI/CD Rules
 
 ## Multi-File Compose Strategy
 
@@ -13,14 +13,18 @@ alwaysApply: false
 - `docker-compose.prod.yml`: Prod overrides (resource limits, health checks, restart policies)
 - NEVER use `docker-compose.override.yml` (auto-loading is implicit and error-prone)
 
-## Commands
+## Use Makefile Commands
+
+Always prefer `make` commands over raw `docker compose`:
 
 ```bash
-# Development
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up
-
-# Production
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+make dev            # Start dev environment
+make dev-build      # Start with fresh build
+make down           # Stop all services
+make test           # Run all tests
+make lint           # Run all linters + type checks
+make migrate        # Apply DB migrations
+make clean          # Full reset (delete volumes + images)
 ```
 
 ## Dockerfile Rules
@@ -32,10 +36,18 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 ## Secrets
 
-- NEVER commit `.env` files — only `.env.example` with placeholders is committed
+- NEVER commit `.env` files — only `.env.example` with placeholders
 - NEVER put real secrets in Docker build args or Dockerfiles
 - Production `.env` on server: `chmod 600`, owned by deploy user only
-- Use `gitleaks` pre-commit hook to prevent accidental secret commits
+- `gitleaks` runs in CI pipeline on every PR to catch accidental leaks
+
+## CI/CD Pipeline (GitHub Actions)
+
+- **On PR** (`ci.yml`): 6 parallel checks must all pass before merge:
+  lint → test → coverage (>= 80%) → secret scan → docker build
+- **On merge to main** (`cd.yml`): build prod images → push to GHCR → deploy to EC2
+- **AI Review** (`ai-review.yml`): GPT-4o-mini reviews every PR diff automatically
+- Deploy includes health check; auto-rollback on failure
 
 ## Environment Differences
 

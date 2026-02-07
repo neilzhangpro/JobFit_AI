@@ -1,5 +1,5 @@
 ---
-description: Core development workflow - test first, then implement, then refactor
+description: Core development workflow - test first, then implement, then commit with conventions
 alwaysApply: true
 ---
 
@@ -7,29 +7,49 @@ alwaysApply: true
 
 Every feature or bugfix MUST follow this strict order:
 
-## Step 1: Understand
+## Step 1: Branch
+- Create a branch from `develop` (NEVER from `main` directly)
+- Naming: `feature/<context>-<description>` or `fix/<context>-<description>`
+- Example: `feature/optimization-jd-analyzer`, `fix/resume-pdf-parsing`
+
+## Step 2: Understand
 - Read the relevant docs in `docs/` before coding
 - Identify which bounded context this belongs to (identity, resume, optimization, interview, billing)
 - Check existing code for reusable variables, functions, and patterns — avoid redundant code
 
-## Step 2: Test First
+## Step 3: Test First
 - Write failing tests BEFORE writing implementation code
 - Domain logic: unit tests with `test_<method>_<scenario>_<expected>` naming
 - API endpoints: integration tests with authenticated test client
 - Repository: include a tenant isolation test (`tenant_a_cannot_see_tenant_b_data`)
 - Use `factory_boy` (Python) for test data — never hardcode entity construction
 
-## Step 3: Implement
+## Step 4: Implement
 - Write the simplest code that makes the tests pass — no over-engineering
 - Follow DDD layers: Domain → Application → Infrastructure → API
 - Every class and public function MUST have a docstring (Google style for Python)
 - Every file with key logic MUST have inline comments at critical decision points
 
-## Step 4: Verify
-- Run `ruff check` + `mypy --strict` (backend) or `eslint` + `tsc --noEmit` (frontend)
+## Step 5: Verify
+- Run `make lint` or: `ruff check` + `mypy --strict` (backend), `eslint` + `tsc --noEmit` (frontend)
+- Run `make test` to ensure all tests pass
 - Ensure test coverage >= 80% overall, >= 90% for domain layer
 - No `any` type (TS), no bare `except` (Python), no magic numbers, no hardcoded strings
 
-## Step 5: Commit
+## Step 6: Commit
 - Use Conventional Commits: `feat(optimization):`, `fix(resume):`, `test(identity):`
 - Scope must match bounded context: identity, resume, optimization, interview, billing, shared, frontend
+- Commit messages explain WHY, not WHAT (the diff shows what)
+
+## Step 7: Push and PR
+- Push to origin: `git push -u origin feature/xxx`
+- Create PR targeting `develop` (NEVER target `main` for features)
+- PR title follows Conventional Commits format
+- PR description must include: Summary, Motivation, Changes, Testing checklist
+- PR must be < 400 lines of changed code — split larger changes
+- Wait for: CI pipeline (6 checks) + AI review bot + human code owner approval
+- Use "Squash and merge" to keep history clean
+
+## Sync Daily
+- Run `git fetch origin && git rebase origin/develop` daily to avoid merge conflicts
+- Use `--force-with-lease` (never `--force`) when pushing after rebase
