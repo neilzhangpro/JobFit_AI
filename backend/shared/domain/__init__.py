@@ -1,1 +1,1 @@
-"""Shared Domain — Base Entity, Value Object, Aggregate Root, Domain Events, Exceptions."""
+"""Shared Domain — base classes for entities, VOs, and events."""
