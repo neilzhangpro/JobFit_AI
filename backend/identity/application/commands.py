@@ -1,14 +1,14 @@
-"""RegisterUserCommand, CreateTenantCommand command objects.
+"""Command objects representing user intentions.
 
-Commands represent user intentions and are used by application services.
+Commands are used by application services to execute use cases.
 """
 
-# TODO: Implement RegisterUserCommand class
-#   - Fields: email, password, tenant_id (optional), role
-#   - Include validation logic
-#   - Use Pydantic BaseModel
+from pydantic import BaseModel
 
-# TODO: Implement CreateTenantCommand class
-#   - Fields: name, admin_email, admin_password
-#   - Include validation logic
-#   - Use Pydantic BaseModel
+
+class RegisterUserCommand(BaseModel):
+    """Command to register a new user with a new tenant."""
+
+    email: str
+    password: str
+    tenant_name: str

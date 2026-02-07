@@ -1,25 +1,48 @@
-"""RegisterRequest, LoginRequest, TokenResponse, UserDTO DTOs.
+"""DTOs for data exchange between API and Application layers.
 
-DTOs (Data Transfer Objects) are used for data exchange between API and application layers.
+All request/response models use Pydantic for validation.
 """
 
-# TODO: Implement RegisterRequest DTO
-#   - Fields: email, password, tenant_name (optional), role (optional)
-#   - Include Pydantic validators for email format and password strength
+from datetime import datetime
 
-# TODO: Implement LoginRequest DTO
-#   - Fields: email, password
-#   - Include Pydantic validators
+from pydantic import BaseModel, EmailStr, Field
 
-# TODO: Implement TokenResponse DTO
-#   - Fields: access_token, refresh_token, token_type, expires_in
-#   - Include Pydantic validators
 
-# TODO: Implement UserDTO DTO
-#   - Fields: user_id, email, role, tenant_id, created_at
-#   - Exclude sensitive fields (password hash)
-#   - Include Pydantic validators
+class RegisterRequest(BaseModel):
+    """Request body for user registration."""
 
-# TODO: Implement TenantDTO DTO
-#   - Fields: tenant_id, name, created_at, updated_at
-#   - Include Pydantic validators
+    email: EmailStr
+    password: str = Field(min_length=8)
+    tenant_name: str = Field(min_length=2)
+
+
+class LoginRequest(BaseModel):
+    """Request body for user login."""
+
+    email: EmailStr
+    password: str
+
+
+class RefreshRequest(BaseModel):
+    """Request body for token refresh."""
+
+    refresh_token: str
+
+
+class TokenResponse(BaseModel):
+    """Response containing JWT access and refresh tokens."""
+
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    expires_in: int
+
+
+class UserDTO(BaseModel):
+    """Public user representation (excludes password hash)."""
+
+    id: str
+    email: str
+    role: str
+    tenant_id: str
+    created_at: datetime

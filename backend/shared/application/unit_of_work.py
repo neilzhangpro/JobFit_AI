@@ -4,8 +4,13 @@ Application services use this interface to ensure all repository operations
 within a use case are committed or rolled back together.
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Self
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    pass
 
 
 class IUnitOfWork(ABC):
@@ -27,7 +32,7 @@ class IUnitOfWork(ABC):
         ...
 
     @abstractmethod
-    async def __aenter__(self) -> Self:
+    async def __aenter__(self) -> IUnitOfWork:
         """Enter the transactional context."""
         ...
 

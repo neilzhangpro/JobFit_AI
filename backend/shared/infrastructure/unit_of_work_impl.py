@@ -3,7 +3,7 @@
 Wraps an AsyncSession and provides commit/rollback semantics.
 """
 
-from typing import Self
+from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,7 +31,7 @@ class SqlAlchemyUnitOfWork(IUnitOfWork):
         """Roll back the current transaction."""
         await self._session.rollback()
 
-    async def __aenter__(self) -> Self:
+    async def __aenter__(self) -> SqlAlchemyUnitOfWork:
         """Enter the transactional context."""
         return self
 
