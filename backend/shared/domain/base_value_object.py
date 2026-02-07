@@ -4,5 +4,17 @@ Value objects have no identity. Two value objects with the same attributes
 are considered equal. They should be implemented as frozen dataclasses.
 """
 
-# TODO(#13): Implement BaseValueObject with frozen=True dataclass pattern
-# TODO(#14): Implement __eq__ and __hash__ based on all fields
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class BaseValueObject:
+    """Base class for all domain value objects.
+
+    Value objects are immutable (frozen=True) and compared by their field
+    values. Subclasses inherit this behavior — just add fields:
+
+        @dataclass(frozen=True)
+        class Email(BaseValueObject):
+            value: str
+    """
