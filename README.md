@@ -210,7 +210,7 @@ This project enforces a **test-first development workflow**:
 | Member | Role | Ownership | Contact |
 |--------|------|-----------|---------|
 | **Yaohui Zhang (Tomie)** | Platform & Infrastructure | `shared/`, `identity/`, `resume/`, `billing/`, `frontend/`, Docker, CI/CD | tomieweb@gmail.com |
-| **Wei Xie (Brand)** | AI Workflow | `optimization/`, `interview/` — LangGraph agents, RAG pipeline, ATS scoring, interview Q&A | microxw@gmail.com |
+| **Wei Xie (Brandy)** | AI Workflow | `optimization/`, `interview/` — LangGraph agents, RAG pipeline, ATS scoring, interview Q&A | microxw@gmail.com |
 
 ---
 
