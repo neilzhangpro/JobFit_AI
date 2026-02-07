@@ -1,4 +1,6 @@
-"""CoverLetterGeneratorAgent — generates tailored cover letters from JD + optimized resume.
+"""CoverLetterGeneratorAgent.
+
+Generates tailored cover letters from JD + optimized resume.
 
 This agent generates personalized cover letters by analyzing:
 - Job description requirements and company culture

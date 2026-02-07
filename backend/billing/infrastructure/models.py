@@ -10,5 +10,6 @@ All models must include tenant_id for multi-tenant isolation.
 # TODO: Implement UsageRecordModel SQLAlchemy model
 #   - Fields: id, tenant_id, resource_type, quantity, recorded_at
 # TODO: Ensure tenant_id is NOT NULL and indexed on both tables
-# TODO: Add indexes for efficient queries (tenant_id + period, tenant_id + resource_type)
+# TODO: Add indexes for efficient queries (tenant_id + period,
+#       tenant_id + resource_type)
 # TODO: Add foreign key constraints where appropriate

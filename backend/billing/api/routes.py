@@ -1,4 +1,9 @@
-"""FastAPI routes: GET /billing/usage, GET /billing/subscription, POST /billing/subscribe.
+"""FastAPI routes for billing management.
+
+Endpoints:
+- GET /billing/usage
+- GET /billing/subscription
+- POST /billing/subscribe
 
 This module contains FastAPI route handlers for billing:
 - GET /billing/usage: Get usage summary for current tenant

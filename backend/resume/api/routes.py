@@ -1,4 +1,11 @@
-"""FastAPI routes: POST /resumes/upload, GET /resumes, GET /resumes/{id}, DELETE /resumes/{id}."""
+"""FastAPI routes for resume management.
+
+Endpoints:
+- POST /resumes/upload
+- GET /resumes
+- GET /resumes/{id}
+- DELETE /resumes/{id}
+"""
 
 # TODO: Implement POST /resumes/upload endpoint
 # TODO: Implement GET /resumes endpoint (list user's resumes)
