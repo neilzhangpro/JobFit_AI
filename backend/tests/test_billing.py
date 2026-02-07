@@ -8,3 +8,8 @@ quota enforcement, OptimizationCompleted event handling.
 # TODO(#55): test_quota_exceeded_blocks_optimization
 # TODO(#56): test_optimization_completed_event_records_usage
 # TODO(#57): test_tenant_a_cannot_see_tenant_b_usage
+
+
+def test_placeholder() -> None:
+    """Placeholder to ensure pytest collects this module."""
+    assert True

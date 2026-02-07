@@ -50,3 +50,11 @@ CODEOWNERS file enforces review by the correct owner.
 - **Leaky Abstraction**: SQLAlchemy models used as domain entities — keep them separate
 - **Shared Mutable State**: use `ContextVar` for request-scoped state, DI for dependencies
 - **Cross-context coupling**: contexts communicate via domain events, not direct imports
+
+## How to defined DDD in code?
+Can't you write the basic logic in a pure Python file without importing any third-party libraries (SQLAlchemy, FastAPI, Redis, JOSE, etc.)?
+
+- Yes → Domain Layer
+- No → Infrastructure Layer
+- If the code itself doesn't contain "rules" and only coordinates between calling parties → Application Layer
+- If the code only performs HTTP request/response transformations → API Layer

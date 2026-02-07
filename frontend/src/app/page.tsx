@@ -1,5 +1,7 @@
 /**
- * Landing page — public marketing page for JobFit AI.
+ * Render the public marketing landing page for JobFit AI.
+ *
+ * @returns The root JSX element representing the landing page.
  */
 
 export default function HomePage() {
@@ -7,9 +9,7 @@ export default function HomePage() {
     <main className="flex min-h-screen flex-col items-center justify-center bg-gray-50">
       <div className="text-center">
         <h1 className="text-5xl font-bold text-gray-900">JobFit AI</h1>
-        <p className="mt-4 text-xl text-gray-600">
-          Intelligent Resume Optimization Agent
-        </p>
+        <p className="mt-4 text-xl text-gray-600">Intelligent Resume Optimization Agent</p>
         <p className="mt-2 text-gray-500">
           Upload your resume, paste a job description, and let AI optimize your application.
         </p>

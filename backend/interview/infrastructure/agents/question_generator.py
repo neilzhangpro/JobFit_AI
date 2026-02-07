@@ -1,4 +1,7 @@
-"""QuestionGeneratorAgent — generates behavioral, technical, situational interview questions with STAR-format answer suggestions.
+"""QuestionGeneratorAgent.
+
+Generates behavioral, technical, situational interview questions with
+STAR-format answer suggestions.
 
 This agent generates interview questions based on job descriptions and
 optimized resumes. Questions are categorized as behavioral, technical, or

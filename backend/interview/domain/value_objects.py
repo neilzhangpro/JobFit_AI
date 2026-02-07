@@ -1,4 +1,7 @@
-"""InterviewQuestion (category, question_text, suggested_answer), CoverLetter (content, tone).
+"""InterviewQuestion and CoverLetter value objects.
+
+InterviewQuestion: category, question_text, suggested_answer.
+CoverLetter: content, tone.
 
 This module contains value objects for the interview domain:
 - InterviewQuestion: Represents a single interview question with category,
