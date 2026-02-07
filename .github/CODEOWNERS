@@ -2,41 +2,42 @@
 # JobFit AI — Code Owners
 # =============================================================================
 # GitHub enforces that at least one owner approves a PR before merge.
-# Replace @person-a and @person-b with actual GitHub usernames.
+# Person A (AI Workflow): @brandyxie100
+# Person B (Platform):    @neilzhangpro
 #
 # Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
 # --- Person A: AI Workflow ---
 # Core optimization pipeline (LangGraph agents, RAG, ATS scoring)
-backend/optimization/                   @person-a
+backend/optimization/                   @brandyxie100
 # Interview preparation (question generator, cover letter agent)
-backend/interview/                      @person-a
+backend/interview/                      @brandyxie100
 
 # --- Person B: Platform ---
 # Shared kernel (base classes, middleware, infrastructure)
-backend/shared/                         @person-b
+backend/shared/                         @neilzhangpro
 # Identity & auth
-backend/identity/                       @person-b
+backend/identity/                       @neilzhangpro
 # Resume upload & parsing
-backend/resume/                         @person-b
+backend/resume/                         @neilzhangpro
 # Billing & quotas
-backend/billing/                        @person-b
+backend/billing/                        @neilzhangpro
 # All frontend code
-frontend/                               @person-b
+frontend/                               @neilzhangpro
 # Docker & CI/CD
-docker-compose*.yml                     @person-b
-Makefile                                @person-b
-.github/                                @person-b
+docker-compose*.yml                     @neilzhangpro
+Makefile                                @neilzhangpro
+.github/                                @neilzhangpro
 
 # --- Shared: Both must approve ---
 # Changes to shared domain base classes affect everyone
-backend/shared/domain/                  @person-a @person-b
+backend/shared/domain/                  @brandyxie100 @neilzhangpro
 # Application config is a shared contract
-backend/config.py                       @person-a @person-b
-backend/main.py                         @person-a @person-b
+backend/config.py                       @brandyxie100 @neilzhangpro
+backend/main.py                         @brandyxie100 @neilzhangpro
 # Environment and secrets templates
-.env.example                            @person-a @person-b
+.env.example                            @brandyxie100 @neilzhangpro
 # Project documentation
-docs/                                   @person-a @person-b
+docs/                                   @brandyxie100 @neilzhangpro
 # Project README
-README.md                               @person-a @person-b
+README.md                               @brandyxie100 @neilzhangpro
