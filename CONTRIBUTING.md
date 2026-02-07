@@ -1,6 +1,6 @@
 # JobFit AI — Developer Onboarding Guide
 
-Welcome to the JobFit AI project! This guide is written for **Brand (@brandyxie100)**, who is responsible for the **AI Workflow** part of the system (resume optimization pipeline and interview preparation). Follow this document step by step to get up and running.
+Welcome to the JobFit AI project! This guide is written for **Brandy (@brandyxie100)**, who is responsible for the **AI Workflow** part of the system (resume optimization pipeline and interview preparation). Follow this document step by step to get up and running.
 
 ---
 
