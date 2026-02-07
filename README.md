@@ -229,3 +229,5 @@ This project enforces a **test-first development workflow**:
 ## License
 
 This project is developed as an academic group assignment. All rights reserved.
+
+# author: @tomie & @brandy
