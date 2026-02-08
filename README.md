@@ -207,10 +207,10 @@ This project enforces a **test-first development workflow**:
 
 ## Team
 
-| Member | Role | Ownership |
-|--------|------|-----------|
-| **Person A** | AI Workflow | `optimization/`, `interview/` — LangGraph agents, RAG pipeline, ATS scoring, interview Q&A |
-| **Person B** | Platform | `shared/`, `identity/`, `resume/`, `billing/`, `frontend/`, Docker, CI/CD |
+| Member | Role | Ownership | Contact |
+|--------|------|-----------|---------|
+| **Yaohui Zhang (Tomie)** | Platform & Infrastructure | `shared/`, `identity/`, `resume/`, `billing/`, `frontend/`, Docker, CI/CD | tomieweb@gmail.com |
+| **Wei Xie (Brandy)** | AI Workflow | `optimization/`, `interview/` — LangGraph agents, RAG pipeline, ATS scoring, interview Q&A | microxw@gmail.com |
 
 ---
 
@@ -228,6 +228,4 @@ This project enforces a **test-first development workflow**:
 
 ## License
 
-This project is developed as an academic group assignment. All rights reserved.
-
-# author: @tomie & @brandy
+This project is developed as an academic group assignment for Yoobee College of Creative Innovation. All rights reserved.
