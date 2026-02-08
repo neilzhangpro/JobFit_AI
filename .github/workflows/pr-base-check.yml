@@ -1,0 +1,69 @@
+# =============================================================================
+# PR Base Branch Check — Enforce Branch Strategy
+# =============================================================================
+#
+# This workflow ensures that Pull Requests follow the project's branch strategy:
+# - feature/* branches must target 'develop'
+# - Only 'develop' branch can create PRs to 'main'
+#
+# Violations will cause the CI check to fail, preventing merge.
+
+name: PR Base Branch Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+jobs:
+  check-base-branch:
+    name: Verify PR Base Branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if PR to main is from develop
+        if: github.base_ref == 'main'
+        run: |
+          if [ "${{ github.head_ref }}" != "develop" ]; then
+            echo "❌ Error: main branch can only accept PRs from develop"
+            echo ""
+            echo "Current PR:"
+            echo "  Source: ${{ github.head_ref }}"
+            echo "  Target: ${{ github.base_ref }}"
+            echo ""
+            echo "Correct workflow:"
+            echo "  1. Create PR: ${{ github.head_ref }} → develop"
+            echo "  2. After merge to develop, create release PR: develop → main"
+            echo ""
+            exit 1
+          fi
+          echo "✅ Valid: develop → main PR"
+
+      - name: Check if feature branch targets develop
+        if: |
+          github.base_ref == 'develop' &&
+          (startsWith(github.head_ref, 'feature/') ||
+           startsWith(github.head_ref, 'fix/'))
+        run: |
+          echo "✅ Valid: ${{ github.head_ref }} → develop PR"
+
+      - name: Warn if feature targets main directly
+        if: |
+          github.base_ref == 'main' &&
+          (startsWith(github.head_ref, 'feature/') ||
+           startsWith(github.head_ref, 'fix/'))
+        run: |
+          echo "❌ Error: feature/fix branches should target develop, not main"
+          echo ""
+          echo "Current PR:"
+          echo "  Source: ${{ github.head_ref }}"
+          echo "  Target: ${{ github.base_ref }}"
+          echo ""
+          echo "Please close this PR and create a new one targeting develop:"
+          echo "  ${{ github.head_ref }} → develop"
+          echo ""
+          exit 1
+
+      - name: Summary
+        run: |
+          echo "Branch strategy verified ✅"
+          echo ""
+          echo "Current PR: ${{ github.head_ref }} → ${{ github.base_ref }}"
