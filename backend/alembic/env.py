@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from alembic import context
 from config import get_settings
 from identity.infrastructure.models import TenantModel, UserModel  # noqa: F401
+from resume.infrastructure.models import ResumeModel, ResumeSectionModel  # noqa: F401
 from shared.infrastructure.database import Base
 
 # Alembic Config object
