@@ -4,6 +4,12 @@ Supports async PostgreSQL via asyncpg. Loads DATABASE_URL from
 application settings.
 """
 
+import sys
+from pathlib import Path
+
+# Add backend root to Python path so imports work in container
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import asyncio
 from logging.config import fileConfig
 
@@ -13,6 +19,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from alembic import context
 from config import get_settings
 from identity.infrastructure.models import TenantModel, UserModel  # noqa: F401
+from resume.infrastructure.models import ResumeModel, ResumeSectionModel  # noqa: F401
 from shared.infrastructure.database import Base
 
 # Alembic Config object

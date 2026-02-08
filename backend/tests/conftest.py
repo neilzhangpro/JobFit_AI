@@ -34,6 +34,10 @@ from identity.infrastructure.jwt_service import JWTService  # noqa: E402
 
 # Import ORM models so they register with Base.metadata
 from identity.infrastructure.models import TenantModel, UserModel  # noqa: E402, F401
+from resume.infrastructure.models import (  # noqa: E402, F401
+    ResumeModel,
+    ResumeSectionModel,
+)
 from shared.infrastructure.database import Base, get_async_session  # noqa: E402
 
 
