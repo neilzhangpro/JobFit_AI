@@ -4,6 +4,12 @@ Supports async PostgreSQL via asyncpg. Loads DATABASE_URL from
 application settings.
 """
 
+import sys
+from pathlib import Path
+
+# Add backend root to Python path so imports work in container
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import asyncio
 from logging.config import fileConfig
 
