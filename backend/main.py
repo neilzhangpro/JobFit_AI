@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import get_settings
 from identity.api.routes import router as auth_router
+from resume.api.routes import router as resume_router
 
 
 @asynccontextmanager
@@ -55,8 +56,8 @@ async def health_check() -> dict[str, str]:
 
 # --- Router Registration ---
 app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
+app.include_router(resume_router, prefix="/api/resumes", tags=["Resumes"])
 # TODO(#1): Register remaining routers as they are implemented:
-# app.include_router(resume_router, prefix="/api/resumes", tags=["Resumes"])
 # app.include_router(optimize_router, prefix="/api", tags=["Optimization"])
 # app.include_router(interview_router, prefix="/api", tags=["Interview"])
 # app.include_router(billing_router, prefix="/api/billing", tags=["Billing"])

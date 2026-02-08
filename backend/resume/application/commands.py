@@ -1,5 +1,17 @@
-"""UploadResumeCommand."""
+"""Command objects for the Resume bounded context.
 
-# TODO: Implement UploadResumeCommand
-# TODO: Define command structure for resume upload
-# TODO: Include file, user_id, tenant_id fields
+Commands represent user intentions for resume operations.
+"""
+
+from pydantic import BaseModel
+
+
+class UploadResumeCommand(BaseModel):
+    """Command to upload and parse a new resume."""
+
+    user_id: str
+    tenant_id: str
+    filename: str
+    file_bytes: bytes
+
+    model_config = {"arbitrary_types_allowed": True}
