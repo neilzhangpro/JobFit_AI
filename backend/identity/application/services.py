@@ -4,12 +4,15 @@ Application services coordinate between domain objects and
 infrastructure, but contain no business rules themselves.
 """
 
+import uuid
+
 from identity.application.commands import RegisterUserCommand
 from identity.application.dto import (
     LoginRequest,
     TokenResponse,
     UserDTO,
 )
+from identity.domain.entities import User
 from identity.domain.factories import TenantFactory
 from identity.domain.repository import (
     ITenantRepository,
@@ -76,8 +79,8 @@ class AuthApplicationService:
         Raises:
             AuthenticationError: If credentials are invalid.
         """
-        # Login is a special case: tenant context is not set yet,
-        # so we search across all tenants
+        # Login is a special case: tenant context is not set
+        # yet, so we search across all tenants
         user = await self._user_repo.find_by_email_any_tenant(cmd.email)
         if user is None:
             raise AuthenticationError("Invalid credentials")
@@ -105,8 +108,6 @@ class AuthApplicationService:
         if payload.get("type") != "refresh":
             raise AuthenticationError("Token is not a refresh token")
 
-        import uuid
-
         user_id = uuid.UUID(payload["sub"])
         user = await self._user_repo.find_by_id(user_id)
 
@@ -115,18 +116,16 @@ class AuthApplicationService:
 
         return self._issue_tokens(user)
 
-    def _issue_tokens(self, user: object) -> TokenResponse:
+    def _issue_tokens(self, user: User) -> TokenResponse:
         """Create access + refresh tokens for a user."""
-        # user is typed as object to keep import simple;
-        # at runtime it's identity.domain.entities.User
         access = self._jwt.create_access_token(
-            user_id=str(user.id),  # type: ignore[attr-defined]
-            tenant_id=str(user.tenant_id),  # type: ignore[attr-defined]
-            role=user.role.value,  # type: ignore[attr-defined]
+            user_id=str(user.id),
+            tenant_id=str(user.tenant_id),
+            role=user.role.value,
         )
         refresh = self._jwt.create_refresh_token(
-            user_id=str(user.id),  # type: ignore[attr-defined]
-            tenant_id=str(user.tenant_id),  # type: ignore[attr-defined]
+            user_id=str(user.id),
+            tenant_id=str(user.tenant_id),
         )
         return TokenResponse(
             access_token=access,
@@ -136,12 +135,12 @@ class AuthApplicationService:
         )
 
 
-def user_to_dto(user: object) -> UserDTO:
+def user_to_dto(user: User) -> UserDTO:
     """Convert a domain User entity to a UserDTO."""
     return UserDTO(
-        id=str(user.id),  # type: ignore[attr-defined]
-        email=user.email.value,  # type: ignore[attr-defined]
-        role=user.role.value,  # type: ignore[attr-defined]
-        tenant_id=str(user.tenant_id),  # type: ignore[attr-defined]
-        created_at=user.created_at,  # type: ignore[attr-defined]
+        id=str(user.id),
+        email=user.email.value,
+        role=user.role.value,
+        tenant_id=str(user.tenant_id),
+        created_at=user.created_at,
     )

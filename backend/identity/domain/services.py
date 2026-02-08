@@ -4,7 +4,7 @@ Domain services contain business logic that doesn't naturally fit
 within entities or value objects.
 """
 
-from passlib.context import CryptContext
+from passlib.context import CryptContext  # type: ignore[import-untyped]
 
 # bcrypt context — configured once, reused across calls
 _pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -22,7 +22,8 @@ class PasswordHashingService:
         Returns:
             The bcrypt hash string.
         """
-        return _pwd_context.hash(raw_password)
+        result: str = _pwd_context.hash(raw_password)
+        return result
 
     def verify_password(self, raw_password: str, hashed_password: str) -> bool:
         """Verify a plaintext password against a stored hash.
@@ -34,4 +35,5 @@ class PasswordHashingService:
         Returns:
             True if the password matches, False otherwise.
         """
-        return _pwd_context.verify(raw_password, hashed_password)
+        result: bool = _pwd_context.verify(raw_password, hashed_password)
+        return result

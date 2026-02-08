@@ -6,11 +6,15 @@ Tenant must have at least one admin user. User email is unique within tenant.
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
 
 from identity.domain.value_objects import Email, Role
 from shared.domain.aggregate_root import AggregateRoot
 from shared.domain.base_entity import BaseEntity
 from shared.domain.exceptions import ValidationError
+
+if TYPE_CHECKING:
+    from identity.domain.services import PasswordHashingService
 
 
 class User(BaseEntity):
@@ -38,7 +42,7 @@ class User(BaseEntity):
     def verify_password(
         self,
         raw_password: str,
-        hasher: object,
+        hasher: PasswordHashingService,
     ) -> bool:
         """Verify a raw password against the stored hash.
 
@@ -49,11 +53,7 @@ class User(BaseEntity):
         Returns:
             True if the password matches, False otherwise.
         """
-        # hasher is typed as object to avoid circular import;
-        # at runtime it is PasswordHashingService
-        return hasher.verify_password(  # type: ignore[attr-defined]
-            raw_password, self.hashed_password
-        )
+        return hasher.verify_password(raw_password, self.hashed_password)
 
 
 class Tenant(AggregateRoot):

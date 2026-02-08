@@ -95,7 +95,7 @@ async def test_client(
 
     app.dependency_overrides[get_async_session] = _override_session
 
-    transport = ASGITransport(app=app)  # type: ignore[arg-type]
+    transport = ASGITransport(app=app)
     async with AsyncClient(
         transport=transport,
         base_url="http://test",

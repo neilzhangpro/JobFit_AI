@@ -5,6 +5,7 @@ The repository layer converts between ORM models and domain objects.
 """
 
 import uuid
+from datetime import datetime
 
 from sqlalchemy import (
     DateTime,
@@ -33,15 +34,17 @@ class TenantModel(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     plan: Mapped[str] = mapped_column(String(50), nullable=False, default="free")
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
-    created_at: Mapped[DateTime] = mapped_column(  # type: ignore[assignment]
+    created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.now()
     )
-    updated_at: Mapped[DateTime | None] = mapped_column(  # type: ignore[assignment]
+    updated_at: Mapped[datetime | None] = mapped_column(
         DateTime, nullable=True, onupdate=func.now()
     )
 
     # Relationship: one tenant has many users
-    users = relationship("UserModel", back_populates="tenant", lazy="selectin")
+    users: Mapped[list["UserModel"]] = relationship(
+        "UserModel", back_populates="tenant", lazy="selectin"
+    )
 
 
 class UserModel(Base):
@@ -67,12 +70,12 @@ class UserModel(Base):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(20), nullable=False, default="member")
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
-    created_at: Mapped[DateTime] = mapped_column(  # type: ignore[assignment]
+    created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.now()
     )
-    updated_at: Mapped[DateTime | None] = mapped_column(  # type: ignore[assignment]
+    updated_at: Mapped[datetime | None] = mapped_column(
         DateTime, nullable=True, onupdate=func.now()
     )
 
     # Relationship: each user belongs to one tenant
-    tenant = relationship("TenantModel", back_populates="users")
+    tenant: Mapped["TenantModel"] = relationship("TenantModel", back_populates="users")

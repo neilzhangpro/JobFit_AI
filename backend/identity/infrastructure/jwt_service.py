@@ -4,9 +4,10 @@ Handles access token and refresh token lifecycle.
 """
 
 from datetime import datetime, timedelta
+from typing import Any
 
-from jose import JWTError, jwt
-from jose.exceptions import ExpiredSignatureError
+from jose import JWTError, jwt  # type: ignore[import-untyped]
+from jose.exceptions import ExpiredSignatureError  # type: ignore[import-untyped]
 
 from config import Settings
 from shared.domain.exceptions import AuthenticationError
@@ -44,7 +45,7 @@ class JWTService:
             Encoded JWT string.
         """
         now = datetime.utcnow()
-        payload = {
+        payload: dict[str, Any] = {
             "sub": user_id,
             "tenant_id": tenant_id,
             "role": role,
@@ -52,7 +53,8 @@ class JWTService:
             "iat": now,
             "exp": now + timedelta(minutes=self._access_expire_min),
         }
-        return jwt.encode(payload, self._secret, algorithm=_ALGORITHM)
+        result: str = jwt.encode(payload, self._secret, algorithm=_ALGORITHM)
+        return result
 
     def create_refresh_token(
         self,
@@ -69,16 +71,17 @@ class JWTService:
             Encoded JWT string.
         """
         now = datetime.utcnow()
-        payload = {
+        payload: dict[str, Any] = {
             "sub": user_id,
             "tenant_id": tenant_id,
             "type": "refresh",
             "iat": now,
             "exp": now + timedelta(days=self._refresh_expire_days),
         }
-        return jwt.encode(payload, self._secret, algorithm=_ALGORITHM)
+        result: str = jwt.encode(payload, self._secret, algorithm=_ALGORITHM)
+        return result
 
-    def decode_token(self, token: str) -> dict:
+    def decode_token(self, token: str) -> dict[str, Any]:
         """Decode and validate a JWT token.
 
         Args:
@@ -92,11 +95,12 @@ class JWTService:
                 malformed, or otherwise invalid.
         """
         try:
-            return jwt.decode(
+            result: dict[str, Any] = jwt.decode(
                 token,
                 self._secret,
                 algorithms=[_ALGORITHM],
             )
+            return result
         except ExpiredSignatureError as e:
             raise AuthenticationError("Token has expired") from e
         except JWTError as e:
