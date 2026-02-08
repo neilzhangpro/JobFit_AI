@@ -27,7 +27,7 @@ from shared.infrastructure.unit_of_work_impl import SqlAlchemyUnitOfWork
 # --- Minimal valid PDF bytes for testing ---
 def _make_test_pdf(text: str = "Test resume content") -> bytes:
     """Create a minimal valid PDF using PyPDF2 PdfWriter."""
-    from PyPDF2 import PdfWriter  # type: ignore[import-untyped]
+    from PyPDF2 import PdfWriter
 
     writer = PdfWriter()
     writer.add_blank_page(width=612, height=792)
@@ -60,12 +60,12 @@ class TestSectionType:
 
     def test_enum_values(self) -> None:
         """SectionType values should match expected strings."""
-        assert SectionType.EDUCATION == "education"
-        assert SectionType.EXPERIENCE == "experience"
-        assert SectionType.PROJECTS == "projects"
-        assert SectionType.SKILLS == "skills"
-        assert SectionType.CERTIFICATIONS == "certifications"
-        assert SectionType.SUMMARY == "summary"
+        assert SectionType.EDUCATION.value == "education"
+        assert SectionType.EXPERIENCE.value == "experience"
+        assert SectionType.PROJECTS.value == "projects"
+        assert SectionType.SKILLS.value == "skills"
+        assert SectionType.CERTIFICATIONS.value == "certifications"
+        assert SectionType.SUMMARY.value == "summary"
 
 
 class TestResumeParsingService:

@@ -6,7 +6,7 @@ Wraps PyPDF2 to extract raw text from uploaded PDF resumes.
 import io
 import logging
 
-from PyPDF2 import PdfReader  # type: ignore[import-untyped]
+from PyPDF2 import PdfReader
 
 logger = logging.getLogger(__name__)
 
