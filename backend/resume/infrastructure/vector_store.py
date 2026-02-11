@@ -105,9 +105,7 @@ class VectorStoreAdapter:
 
         # --- Embedding function ----------------------------------------
         if embedding_fn is not None:
-            self._embedding_fn: EmbeddingFunction[list[str]] | None = (
-                embedding_fn
-            )
+            self._embedding_fn: EmbeddingFunction[list[str]] | None = embedding_fn
         else:
             self._embedding_fn = _build_openai_embedding_fn(
                 settings.openai_api_key,
@@ -162,8 +160,7 @@ class VectorStoreAdapter:
         """
         if not self._available:
             logger.warning(
-                "ChromaDB unavailable — skipping store_embeddings "
-                "for resume %s",
+                "ChromaDB unavailable — skipping store_embeddings for resume %s",
                 resume_id,
             )
             return
@@ -254,21 +251,13 @@ class VectorStoreAdapter:
             for i, doc_id in enumerate(results["ids"][0]):
                 # Cosine distance → relevance: 1.0 - distance
                 distance = (
-                    results["distances"][0][i]
-                    if results.get("distances")
-                    else 0.0
+                    results["distances"][0][i] if results.get("distances") else 0.0
                 )
                 relevance = max(1.0 - distance, _MIN_RELEVANCE_SCORE)
 
-                content = (
-                    results["documents"][0][i]
-                    if results.get("documents")
-                    else ""
-                )
+                content = results["documents"][0][i] if results.get("documents") else ""
                 metadata = (
-                    results["metadatas"][0][i]
-                    if results.get("metadatas")
-                    else {}
+                    results["metadatas"][0][i] if results.get("metadatas") else {}
                 )
 
                 chunks.append(
@@ -303,8 +292,7 @@ class VectorStoreAdapter:
         """
         if not self._available:
             logger.warning(
-                "ChromaDB unavailable — skipping delete_embeddings "
-                "for resume %s",
+                "ChromaDB unavailable — skipping delete_embeddings for resume %s",
                 resume_id,
             )
             return
