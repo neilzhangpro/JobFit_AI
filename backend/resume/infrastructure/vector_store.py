@@ -12,11 +12,11 @@ unreachable — a failed embedding must never block a resume upload.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 import chromadb
 from chromadb.api import ClientAPI
-from chromadb.api.types import EmbeddingFunction
+from chromadb.api.types import EmbeddingFunction, Where
 
 from config import Settings
 
@@ -47,7 +47,7 @@ def _build_openai_embedding_fn(
             OpenAIEmbeddingFunction,
         )
 
-        return OpenAIEmbeddingFunction(  # type: ignore[return-value]
+        return OpenAIEmbeddingFunction(
             api_key=api_key,
             model_name="text-embedding-3-small",
         )
@@ -189,7 +189,7 @@ class VectorStoreAdapter:
             collection.upsert(
                 ids=ids,
                 documents=documents,
-                metadatas=metadatas,
+                metadatas=metadatas,  # type: ignore[arg-type]
             )
             logger.info(
                 "Stored %d embeddings for resume %s in tenant %s",
@@ -234,9 +234,9 @@ class VectorStoreAdapter:
         try:
             collection = self._get_collection(tenant_id)
 
-            where_filter: dict[str, str] | None = None
+            where_filter: Where | None = None
             if resume_id is not None:
-                where_filter = {"resume_id": resume_id}
+                where_filter = cast(Where, {"resume_id": resume_id})
 
             results = collection.query(
                 query_texts=[query],
@@ -248,17 +248,17 @@ class VectorStoreAdapter:
             if not results or not results["ids"] or not results["ids"][0]:
                 return chunks
 
+            distances = results.get("distances")
+            documents = results.get("documents")
+            metadatas = results.get("metadatas")
+
             for i, doc_id in enumerate(results["ids"][0]):
                 # Cosine distance → relevance: 1.0 - distance
-                distance = (
-                    results["distances"][0][i] if results.get("distances") else 0.0
-                )
+                distance = distances[0][i] if distances else 0.0
                 relevance = max(1.0 - distance, _MIN_RELEVANCE_SCORE)
 
-                content = results["documents"][0][i] if results.get("documents") else ""
-                metadata = (
-                    results["metadatas"][0][i] if results.get("metadatas") else {}
-                )
+                content = documents[0][i] if documents else ""
+                metadata = metadatas[0][i] if metadatas else {}
 
                 chunks.append(
                     {
