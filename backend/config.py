@@ -36,7 +36,7 @@ class Settings(BaseSettings):
 
     # --- Vector Store ---
     chroma_host: str = "chromadb"
-    chroma_port: int = 8200
+    chroma_port: int = 8000
 
     # --- Object Storage ---
     s3_endpoint: str = "http://minio:9000"
