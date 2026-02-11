@@ -52,7 +52,7 @@ async def get_resume_service(  # noqa: B008
         file_storage=FileStorageAdapter(settings),
         pdf_parser=PDFParser(),
         parsing_service=ResumeParsingDomainService(),
-        vector_store=VectorStoreAdapter(),
+        vector_store=VectorStoreAdapter(settings),
         uow=SqlAlchemyUnitOfWork(session),
     )
 

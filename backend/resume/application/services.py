@@ -4,6 +4,7 @@ Coordinates between domain objects, infrastructure adapters,
 and the unit of work for transactional consistency.
 """
 
+import logging
 import uuid
 
 from resume.application.commands import UploadResumeCommand
@@ -21,6 +22,8 @@ from resume.infrastructure.pdf_parser import PDFParser
 from resume.infrastructure.vector_store import VectorStoreAdapter
 from shared.application.unit_of_work import IUnitOfWork
 from shared.domain.exceptions import EntityNotFoundError
+
+logger = logging.getLogger(__name__)
 
 
 class ResumeApplicationService:
@@ -76,18 +79,25 @@ class ResumeApplicationService:
         await self._repo.save(resume)
         await self._uow.commit()
 
-        # 5. Store embeddings (stub for now)
-        self._vectors.store_embeddings(
-            tenant_id=cmd.tenant_id,
-            resume_id=str(resume.id),
-            sections=[
-                {
-                    "type": s.section_type.value,
-                    "content": s.content,
-                }
-                for s in resume.sections
-            ],
-        )
+        # 5. Store embeddings (best-effort — failure must not block upload)
+        try:
+            self._vectors.store_embeddings(
+                tenant_id=cmd.tenant_id,
+                resume_id=str(resume.id),
+                sections=[
+                    {
+                        "type": s.section_type.value,
+                        "content": s.content,
+                    }
+                    for s in resume.sections
+                ],
+            )
+        except Exception:
+            logger.error(
+                "Failed to store embeddings for resume %s",
+                resume.id,
+                exc_info=True,
+            )
 
         return UploadResumeResponse(
             id=str(resume.id),
@@ -149,7 +159,13 @@ class ResumeApplicationService:
         if resume is None:
             raise EntityNotFoundError(f"Resume {resume_id} not found")
 
-        # Delete from storage
+        # Delete embeddings from vector store (best-effort)
+        self._vectors.delete_embeddings(
+            tenant_id=tenant_id,
+            resume_id=resume_id,
+        )
+
+        # Delete from file storage
         self._storage.delete(resume.storage_path)
 
         # Delete from database
