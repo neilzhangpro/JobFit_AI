@@ -1,18 +1,21 @@
 """Tests for the Resume bounded context.
 
 Covers: section types, parsing service, resume factory,
-PDF parser, API upload/list/detail/delete endpoints.
+PDF parser, vector store adapter, API upload/list/detail/delete.
 """
 
 import io
 import uuid
 from collections.abc import AsyncGenerator
+from typing import Any
 from unittest.mock import MagicMock
 
+import chromadb
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from config import Settings
 from resume.application.services import ResumeApplicationService
 from resume.domain.entities import Resume, ResumeSection
 from resume.domain.factories import ResumeFactory
@@ -178,8 +181,9 @@ async def resume_test_client(
 
     app.dependency_overrides[get_async_session] = _override_session
 
-    # Override resume service to use mock storage
+    # Override resume service to use mock storage + mock vector store
     mock_storage = _mock_file_storage()
+    mock_vectors = MagicMock(spec=VectorStoreAdapter)
 
     async def _override_resume_service() -> ResumeApplicationService:
         return ResumeApplicationService(
@@ -187,7 +191,7 @@ async def resume_test_client(
             file_storage=mock_storage,
             pdf_parser=PDFParser(),
             parsing_service=ResumeParsingDomainService(),
-            vector_store=VectorStoreAdapter(),
+            vector_store=mock_vectors,
             uow=SqlAlchemyUnitOfWork(db_session),
         )
 
@@ -304,3 +308,158 @@ class TestResumeAPI:
             },
         )
         assert resp.status_code == 401
+
+
+# ===================================================================
+# Vector Store Adapter Tests (ChromaDB EphemeralClient)
+# ===================================================================
+
+_SAMPLE_SECTIONS: list[dict[str, Any]] = [
+    {"type": "experience", "content": "Software Engineer at Acme Corp. Built APIs."},
+    {"type": "skills", "content": "Python, FastAPI, Docker, Kubernetes, AWS."},
+    {"type": "education", "content": "BS Computer Science, MIT, 2020."},
+]
+
+
+@pytest.fixture
+def vector_store() -> VectorStoreAdapter:
+    """VectorStoreAdapter backed by an in-memory EphemeralClient.
+
+    Uses ChromaDB's default embedding function so no OpenAI key
+    is required during tests.
+    """
+    settings = Settings(
+        chroma_host="localhost",
+        chroma_port=8000,
+        openai_api_key="",
+        app_env="test",
+    )
+    return VectorStoreAdapter(
+        settings=settings,
+        client=chromadb.EphemeralClient(),
+        embedding_fn=None,  # use ChromaDB default embeddings
+    )
+
+
+class TestVectorStoreAdapter:
+    """Unit tests for the ChromaDB VectorStoreAdapter."""
+
+    def test_store_and_search_returns_relevant_chunks(
+        self,
+        vector_store: VectorStoreAdapter,
+    ) -> None:
+        """Stored sections should be retrievable via search."""
+        tenant_id = str(uuid.uuid4())
+        resume_id = str(uuid.uuid4())
+
+        vector_store.store_embeddings(tenant_id, resume_id, _SAMPLE_SECTIONS)
+
+        results = vector_store.search(tenant_id, "Python Docker AWS", k=3)
+
+        assert len(results) > 0
+        # Each result should have the expected keys
+        first = results[0]
+        assert "content" in first
+        assert "metadata" in first
+        assert "relevance_score" in first
+        assert first["metadata"]["resume_id"] == resume_id
+
+    def test_search_empty_collection_returns_empty(
+        self,
+        vector_store: VectorStoreAdapter,
+    ) -> None:
+        """Searching a tenant with no data should return empty list."""
+        tenant_id = str(uuid.uuid4())
+
+        results = vector_store.search(tenant_id, "Python engineer")
+
+        assert results == []
+
+    def test_delete_embeddings_removes_resume_data(
+        self,
+        vector_store: VectorStoreAdapter,
+    ) -> None:
+        """After deletion, search should return no results."""
+        tenant_id = str(uuid.uuid4())
+        resume_id = str(uuid.uuid4())
+
+        vector_store.store_embeddings(tenant_id, resume_id, _SAMPLE_SECTIONS)
+
+        # Confirm data exists
+        before = vector_store.search(tenant_id, "Python", k=5)
+        assert len(before) > 0
+
+        # Delete and verify
+        vector_store.delete_embeddings(tenant_id, resume_id)
+        after = vector_store.search(tenant_id, "Python", k=5)
+        assert after == []
+
+    def test_tenant_a_cannot_see_tenant_b_data(
+        self,
+        vector_store: VectorStoreAdapter,
+    ) -> None:
+        """Verify strict tenant isolation at the vector store level.
+
+        Data stored under tenant A's collection must not appear
+        in search results for tenant B.
+        """
+        tenant_a = str(uuid.uuid4())
+        tenant_b = str(uuid.uuid4())
+        resume_id = str(uuid.uuid4())
+
+        # Store data only in tenant A
+        vector_store.store_embeddings(tenant_a, resume_id, _SAMPLE_SECTIONS)
+
+        # Tenant A can find it
+        results_a = vector_store.search(tenant_a, "Python AWS", k=5)
+        assert len(results_a) > 0
+
+        # Tenant B must NOT see tenant A's data
+        results_b = vector_store.search(tenant_b, "Python AWS", k=5)
+        assert results_b == []
+
+    def test_graceful_degradation_when_unavailable(self) -> None:
+        """Operations should return gracefully when ChromaDB is down."""
+        settings = Settings(
+            chroma_host="localhost",
+            chroma_port=8000,
+            openai_api_key="",
+            app_env="test",
+        )
+        adapter = VectorStoreAdapter(settings=settings)
+        # Force unavailable state (constructor would have failed
+        # to connect to a non-existent server in CI/test)
+        adapter._available = False
+
+        tenant_id = str(uuid.uuid4())
+        resume_id = str(uuid.uuid4())
+
+        # None of these should raise
+        adapter.store_embeddings(tenant_id, resume_id, _SAMPLE_SECTIONS)
+        results = adapter.search(tenant_id, "Python", k=5)
+        adapter.delete_embeddings(tenant_id, resume_id)
+
+        assert results == []
+
+    def test_upsert_overwrites_existing_embeddings(
+        self,
+        vector_store: VectorStoreAdapter,
+    ) -> None:
+        """Re-uploading the same resume should overwrite old data."""
+        tenant_id = str(uuid.uuid4())
+        resume_id = str(uuid.uuid4())
+
+        # Store original
+        vector_store.store_embeddings(tenant_id, resume_id, _SAMPLE_SECTIONS)
+
+        # Store updated content with same resume_id
+        updated = [
+            {"type": "skills", "content": "Rust, Go, Terraform, GCP."},
+        ]
+        vector_store.store_embeddings(tenant_id, resume_id, updated)
+
+        results = vector_store.search(tenant_id, "Rust Go Terraform", k=5)
+        assert len(results) > 0
+        # Should find the updated content
+        contents = [r["content"] for r in results]
+        assert any("Rust" in c for c in contents)
