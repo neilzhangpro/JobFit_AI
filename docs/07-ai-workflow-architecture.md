@@ -92,9 +92,9 @@ sequenceDiagram
     RAG-->>Graph: state += relevant_chunks
 
     Graph->>RW: run(state)
-    RW->>LLM: Rewrite bullets (GPT-4o)
-    LLM-->>RW: optimized bullets
-    RW-->>Graph: state += optimized_bullets
+    RW->>LLM: Rewrite resume sections (GPT-4o)
+    LLM-->>RW: optimized sections
+    RW-->>Graph: state += optimized_sections
 
     Graph->>ATS: run(state)
     ATS->>LLM: Score ATS compatibility (GPT-4o-mini)
@@ -103,9 +103,9 @@ sequenceDiagram
 
     alt score < threshold AND rewrite_attempts < max
         Graph->>RW: run(state) [retry]
-        RW->>LLM: Re-optimize bullets
-        LLM-->>RW: improved bullets
-        RW-->>Graph: state += optimized_bullets
+        RW->>LLM: Re-optimize sections
+        LLM-->>RW: improved sections
+        RW-->>Graph: state += optimized_sections
         Graph->>ATS: run(state) [re-score]
         ATS->>LLM: Re-score
         LLM-->>ATS: new score
@@ -219,7 +219,9 @@ class OptimizationState(TypedDict, total=False):
     relevant_chunks: list[ResumeChunkDict]
 
     # --- Rewriting (written by ResumeRewriterAgent) ---
-    optimized_bullets: list[str]   # Rewritten bullet points
+    optimized_sections: dict[str, list[str]]  # Rewritten content per section
+    # Keys: "experience" (bullet points), "skills_summary", "projects", etc.
+    # Each value is a list of rewritten strings for that section.
     rewrite_attempts: int          # Number of rewrite iterations (starts at 0, max 2)
 
     # --- Scoring (written by ATSScorerAgent) ---
@@ -260,7 +262,7 @@ class InterviewState(TypedDict, total=False):
     user_id: str
     session_id: str                     # Reference to completed OptimizationSession
     jd_analysis: JDAnalysisDict         # From optimization result
-    optimized_resume_content: list[str] # Optimized bullet points
+    optimized_resume_content: dict[str, list[str]]  # Optimized sections (experience, skills_summary, etc.)
     original_resume_sections: list[dict]
 
     # --- Question Generation Output ---
@@ -426,12 +428,22 @@ class VectorStoreReader:
 
 **File**: `optimization/infrastructure/agents/resume_rewriter.py`
 
-**Responsibility**: Rewrite resume bullet points to align with JD keywords, improve ATS compatibility, and strengthen achievement-oriented language.
+**Responsibility**: Rewrite modifiable resume sections — experience bullet points, skills summary, and project descriptions — to align with JD keywords, improve ATS compatibility, and strengthen achievement-oriented language.
+
+**Rewritable Sections**:
+
+| Section Key | What Gets Rewritten | Example Change |
+|-------------|--------------------|-----------------------|
+| `experience` | Work experience bullet points | Add JD keywords, quantify achievements, strengthen action verbs |
+| `skills_summary` | Skills/summary/profile section | Reorder and rephrase to lead with JD-priority skills |
+| `projects` | Project descriptions (if present) | Emphasize JD-relevant technologies and outcomes |
+
+Sections like `education` and `certifications` are **not rewritten** — they contain factual records that should not be altered.
 
 | Aspect | Detail |
 |--------|--------|
 | **Reads from state** | `jd_analysis`, `relevant_chunks` (or `resume_sections` fallback), `rewrite_attempts`, `ats_score` (on retry), `score_breakdown` (on retry) |
-| **Writes to state** | `optimized_bullets: list[str]`, `rewrite_attempts` (incremented), `token_usage["resume_rewriter"]` |
+| **Writes to state** | `optimized_sections: dict[str, list[str]]`, `rewrite_attempts` (incremented), `token_usage["resume_rewriter"]` |
 | **LLM Model** | GPT-4o (creative rewriting requires strong language generation) |
 | **Temperature** | 0.7 (allow creativity while maintaining professionalism) |
 
@@ -440,13 +452,27 @@ class VectorStoreReader:
 First attempt:
 ```
 System: You are an expert resume writer and ATS optimization specialist.
-Rewrite the candidate's resume bullet points to maximize alignment with the
-target job description. Follow these rules:
-1. Embed relevant JD keywords naturally (do NOT keyword-stuff).
-2. Start each bullet with a strong action verb.
-3. Quantify achievements with numbers, percentages, or dollar amounts where possible.
-4. Preserve factual accuracy — do NOT fabricate experiences.
-5. Maintain professional tone appropriate for ATS systems.
+Rewrite the candidate's resume sections to maximize alignment with the
+target job description. You will optimize three section types:
+
+1. EXPERIENCE — Rewrite bullet points:
+   - Embed relevant JD keywords naturally (do NOT keyword-stuff).
+   - Start each bullet with a strong action verb.
+   - Quantify achievements with numbers, percentages, or dollar amounts.
+
+2. SKILLS SUMMARY — Rewrite the skills/profile section:
+   - Reorder skills to lead with the highest-weighted JD keywords.
+   - Add JD-required skills the candidate possesses but did not list.
+   - Remove or de-emphasize skills irrelevant to this JD.
+   - Keep as a concise list or 2-3 sentence summary.
+
+3. PROJECTS — Rewrite project descriptions (if present):
+   - Emphasize JD-relevant technologies, outcomes, and scale.
+   - Quantify impact where possible.
+
+General rules for ALL sections:
+- Preserve factual accuracy — do NOT fabricate experiences or skills.
+- Maintain professional tone appropriate for ATS systems.
 
 User:
 ## Target JD Requirements
@@ -455,10 +481,16 @@ Soft Skills: {jd_analysis.soft_skills}
 Key Responsibilities: {jd_analysis.responsibilities}
 Keyword Weights: {jd_analysis.keyword_weights}
 
-## Candidate's Relevant Experience
-{relevant_chunks formatted as sections}
+## Candidate's Relevant Content
+{relevant_chunks formatted by section type}
 
-Rewrite the bullet points. Return a JSON array of strings, one per bullet point.
+Rewrite the sections. Return a JSON object with section keys:
+{
+  "experience": ["bullet1", "bullet2", ...],
+  "skills_summary": ["rewritten summary or skill lines"],
+  "projects": ["project description 1", ...]
+}
+Only include keys for sections present in the candidate's content.
 ```
 
 Retry prompt (when `rewrite_attempts > 0`):
@@ -469,28 +501,38 @@ Score breakdown: keywords={keywords:.0%}, skills={skills:.0%},
 experience={experience:.0%}, formatting={formatting:.0%}.
 
 Focus on improving the weakest categories. Specifically:
-- If keywords score is low: integrate more JD-specific terminology.
-- If experience score is low: strengthen relevance to JD responsibilities.
-- If formatting score is low: use cleaner bullet structure.
+- If keywords score is low: integrate more JD-specific terminology across all sections.
+- If skills score is low: strengthen the skills summary to better reflect JD requirements.
+- If experience score is low: strengthen relevance to JD responsibilities in experience bullets.
+- If formatting score is low: use cleaner structure in all sections.
 ```
 
 **Output Schema**:
 
 ```json
-[
-  "Architected and deployed 3 microservices on AWS ECS, reducing deployment time by 40%",
-  "Led cross-functional team of 5 engineers to deliver CI/CD pipeline using Docker and GitHub Actions",
-  "Optimized Python backend API performance, achieving 99.9% uptime and 200ms p95 latency"
-]
+{
+  "experience": [
+    "Architected and deployed 3 microservices on AWS ECS, reducing deployment time by 40%",
+    "Led cross-functional team of 5 engineers to deliver CI/CD pipeline using Docker and GitHub Actions",
+    "Optimized Python backend API performance, achieving 99.9% uptime and 200ms p95 latency"
+  ],
+  "skills_summary": [
+    "Backend engineer with 5+ years in Python, FastAPI, and AWS, specializing in microservices architecture, CI/CD automation, and high-availability distributed systems."
+  ],
+  "projects": [
+    "Built real-time data pipeline processing 1M+ events/day using Python and AWS Lambda, reducing analytics latency by 60%"
+  ]
+}
 ```
 
 **Error Handling**:
 
 | Failure Mode | Recovery |
 |-------------|----------|
-| LLM returns non-JSON or malformed array | Retry once with explicit format instruction. If still fails, wrap raw text as single-element array. |
+| LLM returns non-JSON or malformed object | Retry once with explicit format instruction. If still fails, wrap raw text into `{"experience": [...]}`. |
 | LLM timeout (> 45s) | Raise `AgentExecutionError`; this is the most token-heavy call and most likely to timeout. |
 | Output contains fabricated content | Not detectable at agent level; users verify via side-by-side comparison in the UI. Prompt explicitly instructs "do NOT fabricate." |
+| Missing section key in output | Acceptable — only present sections are rewritten. Log info for any expected key that is absent. |
 
 ---
 
@@ -502,7 +544,7 @@ Focus on improving the weakest categories. Specifically:
 
 | Aspect | Detail |
 |--------|--------|
-| **Reads from state** | `jd_analysis`, `optimized_bullets` |
+| **Reads from state** | `jd_analysis`, `optimized_sections` |
 | **Writes to state** | `ats_score: float`, `score_breakdown: ScoreBreakdownDict`, `token_usage["ats_scorer"]` |
 | **LLM Model** | GPT-4o-mini (evaluation/scoring task — structured output) |
 | **Temperature** | 0.0 (deterministic scoring) |
@@ -511,7 +553,7 @@ Focus on improving the weakest categories. Specifically:
 
 ```
 System: You are an ATS (Applicant Tracking System) scoring engine.
-Evaluate the optimized resume bullet points against the target JD requirements.
+Evaluate the optimized resume sections (experience, skills summary, projects) against the target JD requirements.
 Score each category from 0.0 to 1.0 and provide an overall weighted score.
 
 Scoring categories and weights:
@@ -533,8 +575,8 @@ User:
 ## JD Requirements
 {jd_analysis}
 
-## Optimized Resume Bullets
-{optimized_bullets}
+## Optimized Resume Sections
+{optimized_sections formatted by section type}
 ```
 
 **Output Schema**:
@@ -567,7 +609,7 @@ User:
 
 | Aspect | Detail |
 |--------|--------|
-| **Reads from state** | `jd_analysis`, `optimized_bullets`, `score_breakdown` |
+| **Reads from state** | `jd_analysis`, `optimized_sections`, `score_breakdown` |
 | **Writes to state** | `gap_report: GapReportDict`, `token_usage["gap_analyzer"]` |
 | **LLM Model** | GPT-4o-mini (analytical comparison task) |
 | **Temperature** | 0.2 (mostly factual, slight flexibility for recommendations) |
@@ -593,8 +635,8 @@ Hard Skills: {jd_analysis.hard_skills}
 Soft Skills: {jd_analysis.soft_skills}
 Qualifications: {jd_analysis.qualifications}
 
-## Optimized Resume Content
-{optimized_bullets}
+## Optimized Resume Sections
+{optimized_sections formatted by section type}
 
 ## Current ATS Score Breakdown
 {score_breakdown}
@@ -631,8 +673,8 @@ This profile is the default recommendation for production to reduce latency and 
 
 Before invoking `ATSScorerAgent`, run a deterministic pre-score:
 
-1. **Keyword coverage**: overlap of `jd_analysis.hard_skills` and `optimized_bullets`.
-2. **Section relevance**: check whether rewritten bullets map to top responsibilities.
+1. **Keyword coverage**: overlap of `jd_analysis.hard_skills` across all `optimized_sections`.
+2. **Section relevance**: check whether rewritten experience bullets and skills summary map to top responsibilities.
 3. **Formatting checks**: bullet structure, numeric achievements, sentence length.
 
 If rule-based confidence is high (`confidence >= 0.85`), skip LLM scoring and use deterministic scores.  
@@ -715,7 +757,7 @@ def build_optimization_graph() -> StateGraph:
     # --- Register nodes ---
     graph.add_node("jd_analysis", jd_analyzer_node)
     graph.add_node("resume_retrieval", rag_retriever_node)
-    graph.add_node("bullet_rewriting", resume_rewriter_node)
+    graph.add_node("resume_rewriting", resume_rewriter_node)
     graph.add_node("ats_scoring", ats_scorer_node)
     graph.add_node("gap_analysis", gap_analyzer_node)
     graph.add_node("result_aggregation", result_aggregator_node)
@@ -723,15 +765,15 @@ def build_optimization_graph() -> StateGraph:
     # --- Define edges ---
     graph.add_edge(START, "jd_analysis")
     graph.add_edge("jd_analysis", "resume_retrieval")
-    graph.add_edge("resume_retrieval", "bullet_rewriting")
-    graph.add_edge("bullet_rewriting", "ats_scoring")
+    graph.add_edge("resume_retrieval", "resume_rewriting")
+    graph.add_edge("resume_rewriting", "ats_scoring")
 
     # Conditional: score check determines next step
     graph.add_conditional_edges(
         "ats_scoring",
         score_check_router,
         {
-            "retry_rewrite": "bullet_rewriting",
+            "retry_rewrite": "resume_rewriting",
             "proceed_to_gap": "gap_analysis",
         },
     )
@@ -798,24 +840,26 @@ stateDiagram-v2
 
     JDAnalysis --> ResumeRetrieval: jd_analysis populated
 
-    ResumeRetrieval --> BulletRewriting: relevant_chunks populated
+    ResumeRetrieval --> ResumeRewriting: relevant_chunks populated
 
-    BulletRewriting --> ATSScoring: optimized_bullets populated
+    ResumeRewriting --> ATSScoring: optimized_sections populated
 
     ATSScoring --> ScoreCheck: ats_score populated
 
     state ScoreCheck <<choice>>
-    ScoreCheck --> BulletRewriting: score < threshold\nAND attempts < max
+    ScoreCheck --> ResumeRewriting: score < threshold\nAND attempts < max
     ScoreCheck --> GapAnalysis: score >= threshold\nOR attempts >= max
 
     GapAnalysis --> ResultAggregation: gap_report populated
 
     ResultAggregation --> [*]: final_result assembled
 
-    note right of BulletRewriting
+    note right of ResumeRewriting
         Max 2 retry cycles.
         Retry prompt includes
         previous score feedback.
+        Rewrites experience, skills
+        summary, and projects.
     end note
 
     note right of ATSScoring
@@ -837,7 +881,7 @@ def result_aggregator_node(state: OptimizationState) -> dict:
     return {
         "final_result": {
             "jd_analysis": state.get("jd_analysis", {}),
-            "optimized_bullets": state.get("optimized_bullets", []),
+            "optimized_sections": state.get("optimized_sections", {}),
             "ats_score": state.get("ats_score", 0.0),
             "score_breakdown": state.get("score_breakdown", {}),
             "gap_report": state.get("gap_report", {}),
