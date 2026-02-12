@@ -1,9 +1,15 @@
-# JobFit AI — PR Feature Plan (AI Workflow)
+# JobFit AI — Unified PR Feature Plan
 
-This document defines the 10 Pull Requests required to implement the full AI Workflow
-(Optimization Pipeline + Interview Preparation). Each PR follows the conventions in
-[06-git-workflow-guide.md](../docs/06-git-workflow-guide.md) and implements a section of
-[07-ai-workflow-architecture.md](../docs/07-ai-workflow-architecture.md).
+This document defines **all Pull Requests** required to complete the JobFit AI platform.
+It covers both developers working in parallel:
+
+- **Brandy (Person A)**: AI Workflow — Optimization pipeline, Interview agents
+- **Tomie (Person B)**: Platform & Infrastructure — Billing, Frontend, Shared infra
+
+Each PR follows the conventions in
+[06-git-workflow-guide.md](../06-git-workflow-guide.md) and implements sections of
+[02-system-architecture.md](../02-system-architecture.md) and
+[07-ai-workflow-architecture.md](../07-ai-workflow-architecture.md).
 
 **Rules applied to every PR:**
 
@@ -17,24 +23,87 @@ This document defines the 10 Pull Requests required to implement the full AI Wor
 
 ---
 
-## Dependency Graph
+## Current Implementation Status
+
+| Context | Status | Owner |
+|---|---|---|
+| `shared/` | ✅ Implemented (base entities, middleware, DB, UoW, tenant context) | Both |
+| `identity/` | ✅ Implemented (register, login, JWT, refresh) | Tomie (B) |
+| `resume/` | ✅ Implemented (upload, parse, CRUD, ChromaDB vector store) | Tomie (B) |
+| `optimization/` | 🔲 Scaffolded — all files are stubs/TODOs | Brandy (A) |
+| `interview/` | 🔲 Scaffolded — all files are stubs/TODOs | Brandy (A) |
+| `billing/` | 🔲 Scaffolded — all files are stubs/TODOs | Tomie (B) |
+| `frontend/` | 🔲 Scaffolded — API client, hooks, pages, components are stubs | Tomie (B) |
+
+---
+
+## Unified Dependency Graph
 
 ```
-PR 1 (domain models)
-  └── PR 2 (BaseAgent + state schema)
-        ├── PR 3 (JD Analyzer)      ← can run in parallel
-        ├── PR 4 (RAG Retriever)    ← can run in parallel
-        │     └── PR 5 (Resume Rewriter)
-        │           └── PR 6 (ATS Scorer)
-        │                 └── PR 7 (Gap Analyzer)
-        └────────────────── PR 8 (Full Pipeline Integration) ← depends on PRs 3-7
-                              └── PR 9 (Interview Question Generator)
-                                    └── PR 10 (Cover Letter Generator)
+                        ┌─────────────────────────────────────────────────────┐
+                        │           BRANDY (Person A) — AI Workflow           │
+                        │                                                     │
+                        │  A1 (domain models)                                 │
+                        │    └── A2 (BaseAgent + state schema)                │
+                        │          ├── A3 (JD Analyzer)     ← parallel        │
+                        │          ├── A4 (RAG Retriever)   ← parallel        │
+                        │          │     └── A5 (Resume Rewriter)             │
+                        │          │           └── A6 (ATS Scorer)            │
+                        │          │                 └── A7 (Gap Analyzer)    │
+                        │          └──────── A8 (Pipeline Integration) ◄──┐  │
+                        │                      └── A9 (Question Gen)      │  │
+                        │                            └── A10 (Cover Letter)│  │
+                        └──────────────────────────────────────────────────│──┘
+                                                                          │
+        ┌─────────────────────────────────────────────────────────────────┘
+        │ A8 depends on T2 (quota service)
+        │
+┌───────┴─────────────────────────────────────────────────────────────────────┐
+│                  TOMIE (Person B) — Platform & Infrastructure               │
+│                                                                             │
+│  T1 (billing domain) ──► T2 (quota service + repo) ──► T3 (billing API)    │
+│                                                            │                │
+│  T4 (event bus) ──────────────────────────────► T5 (billing event handler)  │
+│                                                                             │
+│  T6 (frontend API client + auth) ──► T7 (resume UI)                        │
+│                                       ──► T8 (optimization UI)             │
+│                                       ──► T9 (interview UI)                │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Cross-team dependency**: Brandy's **A8** (Full Pipeline) calls `QuotaEnforcementService.check_quota()`,
+which is delivered by Tomie's **T2**. All other PRs are independent between the two developers.
+
+---
+
+## Parallel Development Timeline
+
+```
+Week 1-2:
+  Tomie:   T1 → T2 → T4 → T6
+  Brandy:  A1 → A2 → A3 + A4 (parallel)
+
+Week 3-4:
+  Tomie:   T3 → T5 → T7
+  Brandy:  A5 → A6 → A7
+
+Week 5:
+  Tomie:   T8 (mock data first)
+  Brandy:  A8 (Pipeline Integration, depends on T2 ✅)
+
+Week 6:
+  Tomie:   T9 → T8/T9 wire to real API
+  Brandy:  A9 → A10
+
+Final:
+  Both:    End-to-end integration testing, bug fixes
 ```
 
 ---
 
-## PR 1 — Optimization Domain Models
+# Part 1: Brandy (Person A) — AI Workflow PRs
+
+## A1 — Optimization Domain Models
 
 | Field | Value |
 |-------|-------|
@@ -42,6 +111,7 @@ PR 1 (domain models)
 | **PR Title** | `feat(optimization): add domain value objects, entities, and repository interface` |
 | **Target** | `develop` |
 | **Est. Lines** | ~250-300 |
+| **Depends On** | shared/domain (done) |
 
 ### PR Description
 
@@ -85,7 +155,7 @@ domain models. Pure Python with zero framework imports.
 
 ---
 
-## PR 2 — BaseAgent + State Schema + Graph Skeleton
+## A2 — BaseAgent + State Schema + Graph Skeleton
 
 | Field | Value |
 |-------|-------|
@@ -93,6 +163,7 @@ domain models. Pure Python with zero framework imports.
 | **PR Title** | `feat(optimization): add BaseAgent template method and LangGraph state schema` |
 | **Target** | `develop` |
 | **Est. Lines** | ~200-280 |
+| **Depends On** | A1 |
 
 ### PR Description
 
@@ -128,7 +199,7 @@ skeleton must exist before any individual agent can be wired in.
 
 ---
 
-## PR 3 — JD Analyzer Agent
+## A3 — JD Analyzer Agent
 
 | Field | Value |
 |-------|-------|
@@ -136,6 +207,7 @@ skeleton must exist before any individual agent can be wired in.
 | **PR Title** | `feat(optimization): implement JD analyzer agent with structured extraction` |
 | **Target** | `develop` |
 | **Est. Lines** | ~150-200 |
+| **Depends On** | A2 |
 
 ### PR Description
 
@@ -168,7 +240,7 @@ First agent in the pipeline. Produces the JDAnalysis that all downstream agents
 
 ---
 
-## PR 4 — RAG Retriever Agent
+## A4 — RAG Retriever Agent
 
 | Field | Value |
 |-------|-------|
@@ -176,6 +248,7 @@ First agent in the pipeline. Produces the JDAnalysis that all downstream agents
 | **PR Title** | `feat(optimization): implement RAG retriever agent with vector search` |
 | **Target** | `develop` |
 | **Est. Lines** | ~150-200 |
+| **Depends On** | A2, Tomie's ChromaDB adapter (done ✅) |
 
 ### PR Description
 
@@ -209,7 +282,7 @@ Provides relevant resume chunks for the Resume Rewriter.
 
 ---
 
-## PR 5 — Resume Rewriter Agent
+## A5 — Resume Rewriter Agent
 
 | Field | Value |
 |-------|-------|
@@ -217,6 +290,7 @@ Provides relevant resume chunks for the Resume Rewriter.
 | **PR Title** | `feat(optimization): implement resume rewriter agent for multi-section optimization` |
 | **Target** | `develop` |
 | **Est. Lines** | ~200-300 |
+| **Depends On** | A3, A4 |
 
 ### PR Description
 
@@ -250,7 +324,7 @@ pipeline. Supports the two-stage rewrite strategy from architecture doc Section 
 
 ---
 
-## PR 6 — ATS Scorer Agent
+## A6 — ATS Scorer Agent
 
 | Field | Value |
 |-------|-------|
@@ -258,6 +332,7 @@ pipeline. Supports the two-stage rewrite strategy from architecture doc Section 
 | **PR Title** | `feat(optimization): implement ATS scorer with rule-based fast-path` |
 | **Target** | `develop` |
 | **Est. Lines** | ~200-280 |
+| **Depends On** | A5 |
 
 ### PR Description
 
@@ -291,7 +366,7 @@ skipping LLM calls when the match is clearly strong. Architecture doc Sections 3
 
 ---
 
-## PR 7 — Gap Analyzer Agent
+## A7 — Gap Analyzer Agent
 
 | Field | Value |
 |-------|-------|
@@ -299,6 +374,7 @@ skipping LLM calls when the match is clearly strong. Architecture doc Sections 3
 | **PR Title** | `feat(optimization): implement gap analyzer agent` |
 | **Target** | `develop` |
 | **Est. Lines** | ~120-180 |
+| **Depends On** | A6 |
 
 ### PR Description
 
@@ -329,7 +405,7 @@ that users value highly.
 
 ---
 
-## PR 8 — Full Pipeline Integration
+## A8 — Full Pipeline Integration
 
 | Field | Value |
 |-------|-------|
@@ -337,6 +413,7 @@ that users value highly.
 | **PR Title** | `feat(optimization): wire full pipeline with application service, routes, and persistence` |
 | **Target** | `develop` |
 | **Est. Lines** | ~350-400 |
+| **Depends On** | A3-A7, **T2** (Tomie's quota service) |
 
 ### PR Description
 
@@ -382,7 +459,7 @@ via API. This is the integration PR that makes the optimization feature usable.
 
 ---
 
-## PR 9 — Interview Question Generator
+## A9 — Interview Question Generator
 
 | Field | Value |
 |-------|-------|
@@ -390,6 +467,7 @@ via API. This is the integration PR that makes the optimization feature usable.
 | **PR Title** | `feat(interview): implement question generator with STAR-format answers` |
 | **Target** | `develop` |
 | **Est. Lines** | ~300-380 |
+| **Depends On** | A8 |
 
 ### PR Description
 
@@ -441,7 +519,7 @@ for JD analysis and optimized resume content.
 
 ---
 
-## PR 10 — Cover Letter Generator
+## A10 — Cover Letter Generator
 
 | Field | Value |
 |-------|-------|
@@ -449,6 +527,7 @@ for JD analysis and optimized resume content.
 | **PR Title** | `feat(interview): implement cover letter generator with tone selection` |
 | **Target** | `develop` |
 | **Est. Lines** | ~150-200 |
+| **Depends On** | A9 |
 
 ### PR Description
 
@@ -488,19 +567,511 @@ Final interview feature. Completes the full AI workflow scope (optimization + in
 
 ---
 
-## Summary Table
+# Part 2: Tomie (Person B) — Platform & Infrastructure PRs
+
+## T1 — Billing Domain Models
+
+| Field | Value |
+|-------|-------|
+| **Branch** | `feature/billing-domain-models` |
+| **PR Title** | `feat(billing): add domain value objects, entities, and repository interfaces` |
+| **Target** | `develop` |
+| **Est. Lines** | ~200-250 |
+| **Depends On** | shared/domain (done) |
+
+### PR Description
+
+```markdown
+## Summary
+- Implements Plan enum (FREE, PRO, ENTERPRISE) and Quota value object (max_optimizations, max_tokens)
+- Implements Subscription aggregate root with lifecycle (active, cancelled, expired)
+- Implements UsageRecord entity for tracking resource consumption
+- Defines ISubscriptionRepository and IUsageRepository interfaces (ABC)
+- Adds SubscriptionFactory with plan-based defaults
+
+## Motivation
+Foundation for billing and quota enforcement. The QuotaEnforcementService (T2) and
+Brandy's pipeline integration (A8) both depend on these domain models. Pure Python
+with zero framework imports.
+
+## Changes
+- `billing/domain/value_objects.py` — Plan enum, Quota value object, plan-to-quota mapping
+- `billing/domain/entities.py` — Subscription (aggregate root), UsageRecord (entity)
+- `billing/domain/repository.py` — ISubscriptionRepository, IUsageRepository (ABC)
+- `billing/domain/factories.py` — SubscriptionFactory
+- `tests/test_billing.py` — Unit tests for value objects, entity lifecycle, factory
+
+## Testing
+- [x] Unit tests for Plan enum values and Quota immutability
+- [x] Unit tests for Subscription status transitions (active→cancelled, active→expired)
+- [x] Unit tests for SubscriptionFactory plan-based initialization
+- [x] Unit tests for UsageRecord creation and validation
+- [x] Zero framework imports verified in domain layer
+```
+
+### Files Touched
+
+- `billing/domain/value_objects.py`
+- `billing/domain/entities.py`
+- `billing/domain/repository.py`
+- `billing/domain/factories.py`
+- `tests/test_billing.py`
+
+---
+
+## T2 — Quota Enforcement Service + Repository
+
+| Field | Value |
+|-------|-------|
+| **Branch** | `feature/billing-quota-enforcement` |
+| **PR Title** | `feat(billing): implement quota enforcement service and persistence layer` |
+| **Target** | `develop` |
+| **Est. Lines** | ~300-350 |
+| **Depends On** | T1 |
+| **⚠️ Blocks** | **A8** (Brandy's pipeline integration) |
+
+### PR Description
+
+```markdown
+## Summary
+- Implements QuotaEnforcementService (domain service): check_optimization_quota(),
+  check_token_quota(), record_usage()
+- Implements SubscriptionModel and UsageRecordModel (SQLAlchemy ORM)
+- Implements SubscriptionRepository and UsageRepository with tenant-scoped queries
+- Adds Alembic migration for subscriptions and usage_records tables
+- Implements BillingApplicationService (get subscription, get usage summary)
+
+## Motivation
+Brandy's A8 (Full Pipeline Integration) calls check_quota() before running the
+optimization pipeline. This PR unblocks Brandy by providing the quota enforcement
+interface. Also provides the persistence layer for billing data.
+
+## Changes
+- `billing/domain/services.py` — QuotaEnforcementService (check_optimization_quota, check_token_quota, record_usage)
+- `billing/application/services.py` — BillingApplicationService (get_subscription, get_usage_summary, create_subscription)
+- `billing/infrastructure/models.py` — SubscriptionModel, UsageRecordModel (SQLAlchemy)
+- `billing/infrastructure/repository_impl.py` — SubscriptionRepository, UsageRepository
+- `alembic/versions/xxx_add_billing_tables.py` — Migration for subscriptions and usage_records
+- `tests/test_billing.py` — Unit tests for quota enforcement, repository tests, tenant isolation test
+
+## Testing
+- [x] Unit test: check_optimization_quota returns True when under limit
+- [x] Unit test: check_optimization_quota raises QuotaExceededError when over limit
+- [x] Unit test: record_usage correctly increments usage count
+- [x] Unit test: monthly quota resets at period boundary
+- [x] Tenant isolation test: tenant_a_cannot_see_tenant_b_subscriptions
+- [x] Tenant isolation test: tenant_a_cannot_see_tenant_b_usage_records
+```
+
+### Files Touched
+
+- `billing/domain/services.py`
+- `billing/application/services.py`
+- `billing/infrastructure/models.py`
+- `billing/infrastructure/repository_impl.py`
+- `alembic/versions/xxx_add_billing_tables.py`
+- `tests/test_billing.py`
+
+---
+
+## T3 — Billing API Routes + Stripe Gateway Stub
+
+| Field | Value |
+|-------|-------|
+| **Branch** | `feature/billing-api-routes` |
+| **PR Title** | `feat(billing): add billing API routes and Stripe gateway stub` |
+| **Target** | `develop` |
+| **Est. Lines** | ~250-300 |
+| **Depends On** | T2 |
+
+### PR Description
+
+```markdown
+## Summary
+- Implements GET /billing/usage endpoint (current month usage summary)
+- Implements GET /billing/subscription endpoint (active subscription details)
+- Implements POST /billing/subscribe endpoint (create/upgrade subscription)
+- Implements StripeGateway adapter (stubbed for MVP — returns mock responses)
+- Adds Pydantic request/response DTOs for all billing endpoints
+
+## Motivation
+Exposes billing data to the frontend. The Stripe gateway is stubbed for MVP but
+follows the Adapter pattern for easy real integration in Phase 2.
+
+## Changes
+- `billing/api/routes.py` — GET /usage, GET /subscription, POST /subscribe
+- `billing/application/dto.py` — UsageSummaryDTO, SubscriptionDTO, SubscribeRequest
+- `billing/application/commands.py` — SubscribeCommand
+- `billing/infrastructure/stripe_gateway.py` — StripeGateway (stubbed, Adapter pattern)
+- `tests/test_billing.py` — Integration tests for all 3 endpoints
+
+## Testing
+- [x] Integration test: GET /billing/usage returns correct usage for authenticated user
+- [x] Integration test: GET /billing/subscription returns active subscription
+- [x] Integration test: POST /billing/subscribe creates subscription with correct plan
+- [x] Stripe gateway stub returns expected mock responses
+- [x] Unauthenticated requests return 401
+```
+
+### Files Touched
+
+- `billing/api/routes.py`
+- `billing/application/dto.py`
+- `billing/application/commands.py`
+- `billing/infrastructure/stripe_gateway.py`
+- `tests/test_billing.py`
+
+---
+
+## T4 — Domain Event Bus Implementation
+
+| Field | Value |
+|-------|-------|
+| **Branch** | `feature/shared-event-bus` |
+| **PR Title** | `feat(shared): implement in-process domain event bus` |
+| **Target** | `develop` |
+| **Est. Lines** | ~120-150 |
+| **Depends On** | shared/domain (done) |
+
+### PR Description
+
+```markdown
+## Summary
+- Implements InProcessEventBus (Observer pattern) fulfilling IEventBus interface
+- Supports async handler registration and dispatch
+- Provides subscribe() for event type → handler mapping
+- Provides publish() that fans out to all registered handlers
+- Errors in one handler do not block other handlers (logged, not raised)
+
+## Motivation
+Cross-context communication (e.g., OptimizationCompleted → Billing token tracking)
+requires a working event bus. Currently IEventBus exists but InProcessEventBus is
+a stub. This PR enables the Observer pattern used throughout the architecture.
+
+## Changes
+- `shared/infrastructure/event_bus_impl.py` — InProcessEventBus (implements IEventBus)
+- `tests/test_shared.py` — Unit tests for publish/subscribe, multi-handler fan-out, error isolation
+
+## Testing
+- [x] Unit test: subscribe + publish delivers event to handler
+- [x] Unit test: multiple handlers for same event type all receive event
+- [x] Unit test: handler exception is logged but does not block other handlers
+- [x] Unit test: unsubscribed event types are silently ignored
+```
+
+### Files Touched
+
+- `shared/infrastructure/event_bus_impl.py`
+- `tests/test_shared.py`
+
+---
+
+## T5 — Billing Event Handler (OptimizationCompleted)
+
+| Field | Value |
+|-------|-------|
+| **Branch** | `feature/billing-event-handler` |
+| **PR Title** | `feat(billing): add OptimizationCompleted event handler for token tracking` |
+| **Target** | `develop` |
+| **Est. Lines** | ~100-150 |
+| **Depends On** | T2, T4 |
+
+### PR Description
+
+```markdown
+## Summary
+- Implements OptimizationCompletedEventHandler that subscribes to
+  OptimizationCompleted domain events
+- Extracts token_usage from event payload and records via UsageRepository
+- Registers handler with event bus during application startup
+- Handles errors gracefully — never blocks the optimization flow
+
+## Motivation
+Closes the loop between AI pipeline execution and billing. When Brandy's pipeline
+completes, it publishes an OptimizationCompleted event carrying token counts. This
+handler records that usage for quota tracking.
+
+## Changes
+- `billing/application/event_handlers.py` — OptimizationCompletedEventHandler
+- `main.py` or startup hook — Register handler with event bus
+- `tests/test_billing.py` — Unit tests for event handling and usage recording
+
+## Testing
+- [x] Unit test: handler correctly extracts token_usage and records usage
+- [x] Unit test: handler error does not propagate (graceful degradation)
+- [x] Unit test: handler ignores events with missing payload fields
+- [x] Integration test: publish event → verify usage record created
+```
+
+### Files Touched
+
+- `billing/application/event_handlers.py`
+- `main.py` (or application startup)
+- `tests/test_billing.py`
+
+---
+
+## T6 — Frontend API Client + Auth Flow
+
+| Field | Value |
+|-------|-------|
+| **Branch** | `feature/frontend-api-auth` |
+| **PR Title** | `feat(frontend): implement API client, auth hooks, and login/register pages` |
+| **Target** | `develop` |
+| **Est. Lines** | ~350-400 |
+| **Depends On** | identity API (done) |
+
+### PR Description
+
+```markdown
+## Summary
+- Implements createApiClient() with JWT token injection and auto-refresh
+- Implements useAuth() hook with login, register, logout, token management
+- Implements LoginPage with email/password form, validation, error display
+- Implements RegisterPage with email, password, tenant name, validation
+- Adds AuthProvider context for global auth state
+- Stores JWT in httpOnly cookie or secure localStorage with refresh logic
+
+## Motivation
+Every frontend page depends on authentication. This PR wires the frontend to the
+existing identity API, enabling all subsequent UI work to use authenticated requests.
+
+## Changes
+- `src/lib/api/client.ts` — createApiClient() with JWT interceptor, refresh logic
+- `src/hooks/useAuth.ts` — Full auth state: login, register, logout, refresh, user state
+- `src/providers/AuthProvider.tsx` — Auth context provider wrapping the app
+- `src/app/(auth)/login/page.tsx` — Login form with validation and error handling
+- `src/app/(auth)/register/page.tsx` — Registration form with tenant name
+- `src/lib/api/types.ts` — Add AuthResponse, UserDTO, LoginRequest, RegisterRequest types
+
+## Testing
+- [x] Login form submits correct payload and handles success/error
+- [x] Register form validates inputs and creates account
+- [x] JWT token persisted and injected into subsequent requests
+- [x] Token refresh triggers automatically on 401 response
+- [x] Logout clears token and redirects to login page
+```
+
+### Files Touched
+
+- `frontend/src/lib/api/client.ts`
+- `frontend/src/hooks/useAuth.ts`
+- `frontend/src/providers/AuthProvider.tsx`
+- `frontend/src/app/(auth)/login/page.tsx`
+- `frontend/src/app/(auth)/register/page.tsx`
+- `frontend/src/lib/api/types.ts`
+
+---
+
+## T7 — Frontend Resume Management UI
+
+| Field | Value |
+|-------|-------|
+| **Branch** | `feature/frontend-resume-ui` |
+| **PR Title** | `feat(frontend): implement resume upload, list, and management pages` |
+| **Target** | `develop` |
+| **Est. Lines** | ~300-380 |
+| **Depends On** | T6 |
+
+### PR Description
+
+```markdown
+## Summary
+- Implements ResumeUploader component with drag-and-drop PDF upload
+- Implements ResumesPage with resume list (cards showing filename, sections, date)
+- Implements useResume() hook with upload, list, delete operations
+- Implements resume detail view showing parsed sections
+- Adds loading states, error handling, and empty state UI
+
+## Motivation
+Resume management is the entry point for the user journey. Users must upload a
+resume before they can optimize it. The backend API is fully ready.
+
+## Changes
+- `src/components/resume/ResumeUploader.tsx` — Drag-and-drop PDF upload widget
+- `src/app/(dashboard)/resumes/page.tsx` — Resume list with cards
+- `src/hooks/useResume.ts` — upload, list, get, delete operations via API client
+- `src/lib/api/types.ts` — Add ResumeDTO, ResumeListItemDTO, UploadResponse types
+
+## Testing
+- [x] Upload component accepts PDF files and shows progress
+- [x] Resume list displays uploaded resumes with correct metadata
+- [x] Delete action removes resume and refreshes list
+- [x] Error states displayed for failed uploads (file too large, non-PDF)
+- [x] Empty state shown when no resumes uploaded
+```
+
+### Files Touched
+
+- `frontend/src/components/resume/ResumeUploader.tsx`
+- `frontend/src/app/(dashboard)/resumes/page.tsx`
+- `frontend/src/hooks/useResume.ts`
+- `frontend/src/lib/api/types.ts`
+
+---
+
+## T8 — Frontend Optimization Workflow UI
+
+| Field | Value |
+|-------|-------|
+| **Branch** | `feature/frontend-optimization-ui` |
+| **PR Title** | `feat(frontend): implement optimization workflow with JD input, score card, and gap report` |
+| **Target** | `develop` |
+| **Est. Lines** | ~350-400 |
+| **Depends On** | T6, T7, Brandy's A8 API (can use mock data first) |
+
+### PR Description
+
+```markdown
+## Summary
+- Implements OptimizePage with full optimization workflow
+- Implements JDInputPanel with character count and validation
+- Implements OptimizationContainer orchestrating the workflow (select resume → paste JD → optimize)
+- Implements OptimizationView with side-by-side diff (original vs optimized)
+- Implements ScoreCard with ATS score gauge and category breakdown
+- Implements GapReport with missing skills and recommendations
+- Implements useOptimization() hook for API calls and state management
+- Adds real-time progress tracker during pipeline execution
+
+## Motivation
+Core user-facing feature. The optimization UI ties together resume selection,
+JD input, and result display. Can be developed with mock data before A8 API
+is ready, then wired to real API.
+
+## Changes
+- `src/app/(dashboard)/optimize/page.tsx` — Optimization workspace page
+- `src/containers/OptimizationContainer.tsx` — Workflow orchestration
+- `src/components/optimization/JDInputPanel.tsx` — JD text input with validation
+- `src/components/optimization/OptimizationView.tsx` — Side-by-side diff view
+- `src/components/optimization/ScoreCard.tsx` — ATS score gauge + breakdown
+- `src/components/optimization/GapReport.tsx` — Gap analysis display
+- `src/hooks/useOptimization.ts` — optimize, getSession, listSessions
+- `src/lib/api/types.ts` — Add OptimizationRequest, OptimizationResponse, SessionDTO types
+
+## Testing
+- [x] JD input validates minimum length and shows character count
+- [x] Optimization triggers correctly with selected resume + JD text
+- [x] Score card displays correct scores with visual breakdown
+- [x] Gap report renders missing skills and recommendations
+- [x] Progress tracker shows current pipeline step
+- [x] Error states handled for failed optimizations
+```
+
+### Files Touched
+
+- `frontend/src/app/(dashboard)/optimize/page.tsx`
+- `frontend/src/containers/OptimizationContainer.tsx`
+- `frontend/src/components/optimization/JDInputPanel.tsx`
+- `frontend/src/components/optimization/OptimizationView.tsx`
+- `frontend/src/components/optimization/ScoreCard.tsx`
+- `frontend/src/components/optimization/GapReport.tsx`
+- `frontend/src/hooks/useOptimization.ts`
+- `frontend/src/lib/api/types.ts`
+
+---
+
+## T9 — Frontend Interview Prep UI
+
+| Field | Value |
+|-------|-------|
+| **Branch** | `feature/frontend-interview-ui` |
+| **PR Title** | `feat(frontend): implement interview prep and cover letter UI` |
+| **Target** | `develop` |
+| **Est. Lines** | ~250-300 |
+| **Depends On** | T6, Brandy's A9-A10 API (can use mock data first) |
+
+### PR Description
+
+```markdown
+## Summary
+- Implements InterviewPrep component with accordion Q&A display
+- Questions grouped by category (behavioral, technical, situational) with difficulty badges
+- STAR-format answers displayed with highlighted structure
+- Implements cover letter generation UI with tone selection (formal/conversational/enthusiastic)
+- Implements interview prep page linking from optimization session
+
+## Motivation
+Completes the frontend user journey. After optimization, users can generate
+interview questions and cover letters — the final feature of the MVP.
+
+## Changes
+- `src/components/interview/InterviewPrep.tsx` — Accordion Q&A with category tabs and difficulty badges
+- `src/app/(dashboard)/interview/page.tsx` — Interview prep page (or section within optimization result)
+- `src/hooks/useInterview.ts` — generateQuestions, generateCoverLetter hooks
+- `src/lib/api/types.ts` — Add InterviewPrepResponse, InterviewQuestionDTO, CoverLetterResponse types
+
+## Testing
+- [x] Questions displayed in categorized accordion format
+- [x] STAR answers clearly structured (Situation/Task/Action/Result)
+- [x] Cover letter tone selection works and generates appropriate content
+- [x] Loading states during generation
+- [x] Error handling for failed generation
+```
+
+### Files Touched
+
+- `frontend/src/components/interview/InterviewPrep.tsx`
+- `frontend/src/app/(dashboard)/interview/page.tsx`
+- `frontend/src/hooks/useInterview.ts`
+- `frontend/src/lib/api/types.ts`
+
+---
+
+# Summary Tables
+
+## Brandy (Person A) — AI Workflow
 
 | PR | Branch | Title | Est. Lines | Depends On |
 |----|--------|-------|-----------|------------|
-| 1 | `feature/optimization-domain-models` | `feat(optimization): add domain value objects, entities, and repository interface` | ~250-300 | shared/domain (done) |
-| 2 | `feature/optimization-base-agent` | `feat(optimization): add BaseAgent template method and LangGraph state schema` | ~200-280 | PR 1 |
-| 3 | `feature/optimization-jd-analyzer` | `feat(optimization): implement JD analyzer agent with structured extraction` | ~150-200 | PR 2 |
-| 4 | `feature/optimization-rag-retriever` | `feat(optimization): implement RAG retriever agent with vector search` | ~150-200 | PR 2 |
-| 5 | `feature/optimization-resume-rewriter` | `feat(optimization): implement resume rewriter agent for multi-section optimization` | ~200-300 | PR 3, 4 |
-| 6 | `feature/optimization-ats-scorer` | `feat(optimization): implement ATS scorer with rule-based fast-path` | ~200-280 | PR 5 |
-| 7 | `feature/optimization-gap-analyzer` | `feat(optimization): implement gap analyzer agent` | ~120-180 | PR 6 |
-| 8 | `feature/optimization-pipeline` | `feat(optimization): wire full pipeline with application service, routes, and persistence` | ~350-400 | PR 3-7 |
-| 9 | `feature/interview-question-gen` | `feat(interview): implement question generator with STAR-format answers` | ~300-380 | PR 8 |
-| 10 | `feature/interview-cover-letter` | `feat(interview): implement cover letter generator with tone selection` | ~150-200 | PR 9 |
+| A1 | `feature/optimization-domain-models` | `feat(optimization): add domain value objects, entities, and repository interface` | ~250-300 | shared/domain (done) |
+| A2 | `feature/optimization-base-agent` | `feat(optimization): add BaseAgent template method and LangGraph state schema` | ~200-280 | A1 |
+| A3 | `feature/optimization-jd-analyzer` | `feat(optimization): implement JD analyzer agent with structured extraction` | ~150-200 | A2 |
+| A4 | `feature/optimization-rag-retriever` | `feat(optimization): implement RAG retriever agent with vector search` | ~150-200 | A2 |
+| A5 | `feature/optimization-resume-rewriter` | `feat(optimization): implement resume rewriter agent for multi-section optimization` | ~200-300 | A3, A4 |
+| A6 | `feature/optimization-ats-scorer` | `feat(optimization): implement ATS scorer with rule-based fast-path` | ~200-280 | A5 |
+| A7 | `feature/optimization-gap-analyzer` | `feat(optimization): implement gap analyzer agent` | ~120-180 | A6 |
+| A8 | `feature/optimization-pipeline` | `feat(optimization): wire full pipeline with application service, routes, and persistence` | ~350-400 | A3-A7, **T2** |
+| A9 | `feature/interview-question-gen` | `feat(interview): implement question generator with STAR-format answers` | ~300-380 | A8 |
+| A10 | `feature/interview-cover-letter` | `feat(interview): implement cover letter generator with tone selection` | ~150-200 | A9 |
 
-**Total estimated lines**: ~2,070-2,720 across 10 PRs.
+**Brandy total**: ~2,070-2,720 lines across 10 PRs
+
+## Tomie (Person B) — Platform & Infrastructure
+
+| PR | Branch | Title | Est. Lines | Depends On | Blocks |
+|----|--------|-------|-----------|------------|--------|
+| T1 | `feature/billing-domain-models` | `feat(billing): add domain value objects, entities, and repository interfaces` | ~200-250 | shared/domain (done) | T2 |
+| T2 | `feature/billing-quota-enforcement` | `feat(billing): implement quota enforcement service and persistence layer` | ~300-350 | T1 | **A8** |
+| T3 | `feature/billing-api-routes` | `feat(billing): add billing API routes and Stripe gateway stub` | ~250-300 | T2 | — |
+| T4 | `feature/shared-event-bus` | `feat(shared): implement in-process domain event bus` | ~120-150 | shared/domain (done) | T5 |
+| T5 | `feature/billing-event-handler` | `feat(billing): add OptimizationCompleted event handler for token tracking` | ~100-150 | T2, T4 | — |
+| T6 | `feature/frontend-api-auth` | `feat(frontend): implement API client, auth hooks, and login/register pages` | ~350-400 | identity API (done) | T7, T8, T9 |
+| T7 | `feature/frontend-resume-ui` | `feat(frontend): implement resume upload, list, and management pages` | ~300-380 | T6 | — |
+| T8 | `feature/frontend-optimization-ui` | `feat(frontend): implement optimization workflow with JD input, score card, and gap report` | ~350-400 | T6, T7, A8 API | — |
+| T9 | `feature/frontend-interview-ui` | `feat(frontend): implement interview prep and cover letter UI` | ~250-300 | T6, A9-A10 API | — |
+
+**Tomie total**: ~2,220-2,680 lines across 9 PRs
+
+## Combined Project Total
+
+| Developer | PRs | Est. Lines |
+|---|---|---|
+| Brandy (Person A) | 10 | ~2,070-2,720 |
+| Tomie (Person B) | 9 | ~2,220-2,680 |
+| **Total** | **19** | **~4,290-5,400** |
+
+---
+
+## Cross-Team Dependencies (Critical Path)
+
+```
+Tomie T1 → T2 ─────────────────► Brandy A8 (quota check)
+                                     │
+Brandy A8 (publishes event) ────► Tomie T5 (records token usage)
+                                     │
+Brandy A8 API ready ────────────► Tomie T8 (optimization UI wires to real API)
+Brandy A9-A10 API ready ────────► Tomie T9 (interview UI wires to real API)
+```
+
+**Key takeaway**: Tomie must complete **T1 + T2** before Brandy reaches **A8**.
+Given A8 is Brandy's 8th PR and T2 is Tomie's 2nd, there is ample buffer.
