@@ -5,6 +5,7 @@ Subscription aggregate root lifecycle, UsageRecord entity, SubscriptionFactory,
 and zero-framework-import verification for the domain layer.
 """
 
+import types
 import uuid
 from datetime import datetime, timedelta
 
@@ -411,7 +412,7 @@ class TestDomainLayerPurity:
             assert "pydantic" not in source.lower()
 
 
-def _get_module_source(module: object) -> str:
+def _get_module_source(module: types.ModuleType) -> str:
     """Read the source code of a Python module file."""
     import inspect
 
