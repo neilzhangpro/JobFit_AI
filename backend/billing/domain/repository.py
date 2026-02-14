@@ -31,9 +31,7 @@ class ISubscriptionRepository(ABC):
         ...
 
     @abstractmethod
-    async def find_by_tenant_id(
-        self, tenant_id: uuid.UUID
-    ) -> list[Subscription]:
+    async def find_by_tenant_id(self, tenant_id: uuid.UUID) -> list[Subscription]:
         """Find all subscriptions for a tenant.
 
         Args:

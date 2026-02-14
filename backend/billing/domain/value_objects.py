@@ -50,9 +50,7 @@ class Quota(BaseValueObject):
                 f"max_optimizations must be >= 0, got {self.max_optimizations}"
             )
         if self.max_tokens < 0:
-            raise ValidationError(
-                f"max_tokens must be >= 0, got {self.max_tokens}"
-            )
+            raise ValidationError(f"max_tokens must be >= 0, got {self.max_tokens}")
 
 
 # --- Plan-to-Quota mapping (constants) ---

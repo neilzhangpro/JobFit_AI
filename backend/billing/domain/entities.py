@@ -133,9 +133,7 @@ class UsageRecord(BaseEntity):
     ) -> None:
         super().__init__()
         if quantity < 0:
-            raise ValidationError(
-                f"quantity must be >= 0, got {quantity}"
-            )
+            raise ValidationError(f"quantity must be >= 0, got {quantity}")
         if not resource_type or not resource_type.strip():
             raise ValidationError("resource_type must not be empty")
         self.tenant_id = tenant_id
