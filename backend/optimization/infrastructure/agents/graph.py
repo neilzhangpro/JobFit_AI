@@ -10,7 +10,7 @@ Architecture reference: docs/07-ai-workflow-architecture.md §2, §4.
 """
 
 from collections.abc import Callable
-from typing import Any, TypedDict
+from typing import Any, TypedDict, cast
 
 # ------------------------------------------------------------------
 # Structured sub-types used inside OptimizationState
@@ -227,12 +227,17 @@ def build_optimization_graph():  # type: ignore[no-untyped-def]
     graph = StateGraph(OptimizationState)
 
     # --- Register nodes (stubs until real agents land) ---
-    graph.add_node("jd_analysis", _stub_node("jd_analysis"))
-    graph.add_node("resume_retrieval", _stub_node("resume_retrieval"))
-    graph.add_node("resume_rewriting", _stub_node("resume_rewriting"))
-    graph.add_node("ats_scoring", _stub_node("ats_scoring"))
-    graph.add_node("gap_analysis", _stub_node("gap_analysis"))
-    graph.add_node("result_aggregation", result_aggregator_node)
+    # Cast nodes to satisfy LangGraph's strict add_node overloads
+    nodes: dict[str, Any] = {
+        "jd_analysis": _stub_node("jd_analysis"),
+        "resume_retrieval": _stub_node("resume_retrieval"),
+        "resume_rewriting": _stub_node("resume_rewriting"),
+        "ats_scoring": _stub_node("ats_scoring"),
+        "gap_analysis": _stub_node("gap_analysis"),
+        "result_aggregation": result_aggregator_node,
+    }
+    for node_name, node_fn in nodes.items():
+        graph.add_node(node_name, cast(Any, node_fn))
 
     # --- Define edges ---
     graph.add_edge(START, "jd_analysis")

@@ -738,21 +738,27 @@ class TestResultAggregatorNode:
     """Tests for result_aggregator_node data assembly."""
 
     def test_assembles_final_result(self) -> None:
+        from typing import cast
+
         from optimization.infrastructure.agents.graph import (
+            OptimizationState,
             result_aggregator_node,
         )
 
-        state = {
-            "jd_analysis": {"hard_skills": ["Python"]},
-            "optimized_sections": {"experience": ["bullet"]},
-            "ats_score": 0.82,
-            "score_breakdown": {"keywords": 0.9},
-            "gap_report": {"missing_skills": ["K8s"]},
-            "rewrite_attempts": 1,
-            "token_usage": {"jd_analyzer": 500, "rewriter": 1500},
-            "total_tokens_used": 2000,
-            "errors": [],
-        }
+        state = cast(
+            OptimizationState,
+            {
+                "jd_analysis": {"hard_skills": ["Python"]},
+                "optimized_sections": {"experience": ["bullet"]},
+                "ats_score": 0.82,
+                "score_breakdown": {"keywords": 0.9},
+                "gap_report": {"missing_skills": ["K8s"]},
+                "rewrite_attempts": 1,
+                "token_usage": {"jd_analyzer": 500, "rewriter": 1500},
+                "total_tokens_used": 2000,
+                "errors": [],
+            },
+        )
         result = result_aggregator_node(state)
 
         fr = result["final_result"]
@@ -762,22 +768,30 @@ class TestResultAggregatorNode:
         assert fr["optimized_sections"] == {"experience": ["bullet"]}
 
     def test_computes_total_tokens_from_usage_dict(self) -> None:
+        from typing import cast
+
         from optimization.infrastructure.agents.graph import (
+            OptimizationState,
             result_aggregator_node,
         )
 
-        state = {
-            "token_usage": {"a": 100, "b": 200, "c": 300},
-        }
+        state = cast(
+            OptimizationState,
+            {"token_usage": {"a": 100, "b": 200, "c": 300}},
+        )
         result = result_aggregator_node(state)
         assert result["total_tokens_used"] == 600
 
     def test_handles_empty_state_gracefully(self) -> None:
+        from typing import cast
+
         from optimization.infrastructure.agents.graph import (
+            OptimizationState,
             result_aggregator_node,
         )
 
-        result = result_aggregator_node({})
+        state = cast(OptimizationState, {})
+        result = result_aggregator_node(state)
         fr = result["final_result"]
         assert fr["ats_score"] == 0.0
         assert fr["optimized_sections"] == {}
