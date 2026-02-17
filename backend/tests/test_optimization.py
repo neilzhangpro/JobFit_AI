@@ -99,8 +99,13 @@ def _make_result(session_id: uuid.UUID) -> OptimizationResult:
         tenant_id=TENANT_A_ID,
         jd_analysis=_make_jd_analysis(),
         optimized_sections={
-            "experience": ["Built microservices on AWS ECS, reducing deploy time by 40%"],
-            "skills_summary": ["Python | AWS | Docker | FastAPI | Microservices"],
+            "experience": [
+                "Built microservices on AWS ECS, "
+                "reducing deploy time by 40%",
+            ],
+            "skills_summary": [
+                "Python | AWS | Docker | FastAPI | Microservices",
+            ],
         },
         ats_score=ATSScore(overall=0.82, breakdown=breakdown),
         gap_report=_make_gap_report(),
@@ -455,7 +460,8 @@ class TestOptimizationDomainService:
     def test_calculate_overall_score(self) -> None:
         bd = ScoreBreakdown(keywords=0.8, skills=0.6, experience=0.4, formatting=1.0)
         expected = round(0.8 * 0.35 + 0.6 * 0.30 + 0.4 * 0.25 + 1.0 * 0.10, 4)
-        assert OptimizationDomainService.calculate_overall_score(bd) == pytest.approx(expected)
+        result = OptimizationDomainService.calculate_overall_score(bd)
+        assert result == pytest.approx(expected)
 
     def test_create_ats_score(self) -> None:
         bd = _make_breakdown()
