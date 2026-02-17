@@ -30,7 +30,7 @@ Each PR follows the conventions in
 | `shared/` | ✅ Implemented (base entities, middleware, DB, UoW, tenant context) | Both |
 | `identity/` | ✅ Implemented (register, login, JWT, refresh) | Tomie (B) |
 | `resume/` | ✅ Implemented (upload, parse, CRUD, ChromaDB vector store) | Tomie (B) |
-| `optimization/` | 🔲 Scaffolded — all files are stubs/TODOs | Brandy (A) |
+| `optimization/` | 🟡 A1 domain models done; A2 BaseAgent + state schema done | Brandy (A) |
 | `interview/` | 🔲 Scaffolded — all files are stubs/TODOs | Brandy (A) |
 | `billing/` | 🔲 Scaffolded — all files are stubs/TODOs | Tomie (B) |
 | `frontend/` | 🔲 Scaffolded — API client, hooks, pages, components are stubs | Tomie (B) |

@@ -547,3 +547,239 @@ class TestTenantIsolation:
         sa = _make_session(tenant_id=TENANT_A_ID)
         sb = _make_session(tenant_id=TENANT_B_ID)
         assert sa.tenant_id != sb.tenant_id
+
+
+# ===================================================================
+# A2 — BaseAgent Template Method
+# ===================================================================
+
+
+class _StubAgent:
+    """Minimal concrete agent for testing BaseAgent behaviour.
+
+    Uses deferred import so the test module stays loadable even when
+    ``langchain_openai`` is absent from the dev environment.
+    """
+
+    def __init__(
+        self,
+        prepare_result: str = "prompt",
+        execute_result: str = "raw",
+        parse_result: dict[str, object] | None = None,
+        *,
+        raise_in: str | None = None,
+    ) -> None:
+        from optimization.infrastructure.agents.base_agent import (
+            BaseAgent,
+        )
+
+        outer = self  # capture for inner class
+
+        class _Inner(BaseAgent):
+            """Concrete stub for testing."""
+
+            def prepare(self, state: dict[str, object]) -> str:
+                if outer.raise_in == "prepare":
+                    raise ValueError("prepare boom")
+                return outer.prepare_result
+
+            def execute(self, prompt: str) -> str:
+                if outer.raise_in == "execute":
+                    raise RuntimeError("execute boom")
+                return outer.execute_result
+
+            def parse_output(self, raw_output: str) -> dict[str, object]:
+                if outer.raise_in == "parse":
+                    raise KeyError("parse boom")
+                return outer.parse_result or {}
+
+        self.prepare_result = prepare_result
+        self.execute_result = execute_result
+        self.parse_result = parse_result or {}
+        self.raise_in = raise_in
+        self.agent = _Inner()
+
+
+class TestBaseAgent:
+    """Tests for BaseAgent template method, error wrapping, and helpers."""
+
+    def test_run_happy_path(self) -> None:
+        """run() returns parse_output result on success."""
+        stub = _StubAgent(parse_result={"key": "value"})
+        result = stub.agent.run({"input": "data"})
+        assert result == {"key": "value"}
+
+    def test_run_wraps_prepare_error(self) -> None:
+        """run() wraps prepare errors in AgentExecutionError."""
+        stub = _StubAgent(raise_in="prepare")
+        with pytest.raises(AgentExecutionError, match="prepare boom"):
+            stub.agent.run({})
+
+    def test_run_wraps_execute_error(self) -> None:
+        """run() wraps execute errors in AgentExecutionError."""
+        stub = _StubAgent(raise_in="execute")
+        with pytest.raises(AgentExecutionError, match="execute boom"):
+            stub.agent.run({})
+
+    def test_run_wraps_parse_error(self) -> None:
+        """run() wraps parse_output errors in AgentExecutionError."""
+        stub = _StubAgent(raise_in="parse")
+        with pytest.raises(AgentExecutionError, match="parse boom"):
+            stub.agent.run({})
+
+    def test_track_tokens_extracts_total(self) -> None:
+        """_track_tokens returns total from response metadata."""
+        stub = _StubAgent()
+        metadata: dict[str, object] = {
+            "token_usage": {
+                "prompt_tokens": 100,
+                "completion_tokens": 50,
+                "total_tokens": 150,
+            },
+        }
+        total = stub.agent._track_tokens(metadata, "TestAgent")
+        assert total == 150
+
+    def test_track_tokens_missing_metadata(self) -> None:
+        """_track_tokens returns 0 when metadata is empty."""
+        stub = _StubAgent()
+        assert stub.agent._track_tokens({}, "TestAgent") == 0
+
+    def test_get_model_returns_openai_by_default(self) -> None:
+        """_get_model returns ChatOpenAI with correct params."""
+        stub = _StubAgent()
+        model = stub.agent._get_model("gpt-4o-mini", temperature=0.0)
+        assert model.model_name == "gpt-4o-mini"
+        assert model.temperature == 0.0
+
+    def test_get_model_respects_temperature(self) -> None:
+        """_get_model passes temperature to the model."""
+        stub = _StubAgent()
+        model = stub.agent._get_model("gpt-4o", temperature=0.7)
+        assert model.temperature == 0.7
+
+
+# ===================================================================
+# A2 — Score Check Router
+# ===================================================================
+
+
+class TestScoreCheckRouter:
+    """Tests for score_check_router routing logic."""
+
+    def test_routes_to_gap_when_score_above_threshold(self) -> None:
+        from optimization.infrastructure.agents.graph import (
+            score_check_router,
+        )
+
+        state = {
+            "ats_score": 0.80,
+            "score_threshold": 0.75,
+            "rewrite_attempts": 0,
+            "max_rewrite_attempts": 2,
+        }
+        assert score_check_router(state) == "proceed_to_gap"
+
+    def test_routes_to_retry_when_below_threshold(self) -> None:
+        from optimization.infrastructure.agents.graph import (
+            score_check_router,
+        )
+
+        state = {
+            "ats_score": 0.60,
+            "score_threshold": 0.75,
+            "rewrite_attempts": 0,
+            "max_rewrite_attempts": 2,
+        }
+        assert score_check_router(state) == "retry_rewrite"
+
+    def test_routes_to_gap_when_retries_exhausted(self) -> None:
+        from optimization.infrastructure.agents.graph import (
+            score_check_router,
+        )
+
+        state = {
+            "ats_score": 0.60,
+            "score_threshold": 0.75,
+            "rewrite_attempts": 2,
+            "max_rewrite_attempts": 2,
+        }
+        assert score_check_router(state) == "proceed_to_gap"
+
+    def test_routes_to_gap_at_exact_threshold(self) -> None:
+        from optimization.infrastructure.agents.graph import (
+            score_check_router,
+        )
+
+        state = {
+            "ats_score": 0.75,
+            "score_threshold": 0.75,
+            "rewrite_attempts": 0,
+            "max_rewrite_attempts": 2,
+        }
+        assert score_check_router(state) == "proceed_to_gap"
+
+    def test_uses_defaults_for_missing_fields(self) -> None:
+        """Router gracefully handles missing state fields."""
+        from optimization.infrastructure.agents.graph import (
+            score_check_router,
+        )
+
+        # Empty state → score=0.0, threshold=0.75, attempts=0, max=2
+        assert score_check_router({}) == "retry_rewrite"
+
+
+# ===================================================================
+# A2 — Result Aggregator Node
+# ===================================================================
+
+
+class TestResultAggregatorNode:
+    """Tests for result_aggregator_node data assembly."""
+
+    def test_assembles_final_result(self) -> None:
+        from optimization.infrastructure.agents.graph import (
+            result_aggregator_node,
+        )
+
+        state = {
+            "jd_analysis": {"hard_skills": ["Python"]},
+            "optimized_sections": {"experience": ["bullet"]},
+            "ats_score": 0.82,
+            "score_breakdown": {"keywords": 0.9},
+            "gap_report": {"missing_skills": ["K8s"]},
+            "rewrite_attempts": 1,
+            "token_usage": {"jd_analyzer": 500, "rewriter": 1500},
+            "total_tokens_used": 2000,
+            "errors": [],
+        }
+        result = result_aggregator_node(state)
+
+        fr = result["final_result"]
+        assert fr["ats_score"] == 0.82
+        assert fr["rewrite_attempts"] == 1
+        assert fr["jd_analysis"] == {"hard_skills": ["Python"]}
+        assert fr["optimized_sections"] == {"experience": ["bullet"]}
+
+    def test_computes_total_tokens_from_usage_dict(self) -> None:
+        from optimization.infrastructure.agents.graph import (
+            result_aggregator_node,
+        )
+
+        state = {
+            "token_usage": {"a": 100, "b": 200, "c": 300},
+        }
+        result = result_aggregator_node(state)
+        assert result["total_tokens_used"] == 600
+
+    def test_handles_empty_state_gracefully(self) -> None:
+        from optimization.infrastructure.agents.graph import (
+            result_aggregator_node,
+        )
+
+        result = result_aggregator_node({})
+        fr = result["final_result"]
+        assert fr["ats_score"] == 0.0
+        assert fr["optimized_sections"] == {}
+        assert fr["errors"] == []
+        assert result["total_tokens_used"] == 0
