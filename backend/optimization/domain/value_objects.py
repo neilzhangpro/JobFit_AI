@@ -18,6 +18,7 @@ from shared.domain.exceptions import ValidationError
 # SessionStatus Enum
 # ------------------------------------------------------------------
 
+
 class SessionStatus(Enum):
     """Lifecycle status of an optimization session.
 
@@ -61,6 +62,7 @@ class SessionStatus(Enum):
 # ScoreBreakdown
 # ------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class ScoreBreakdown(BaseValueObject):
     """Per-category ATS score breakdown.
@@ -68,10 +70,10 @@ class ScoreBreakdown(BaseValueObject):
     Each field is a float in [0.0, 1.0].
     """
 
-    keywords: float     # Keyword match score
-    skills: float       # Skills alignment score
-    experience: float   # Experience relevance score
-    formatting: float   # ATS formatting compliance score
+    keywords: float  # Keyword match score
+    skills: float  # Skills alignment score
+    experience: float  # Experience relevance score
+    formatting: float  # ATS formatting compliance score
 
     def __post_init__(self) -> None:
         """Validate all scores are within [0.0, 1.0]."""
@@ -102,6 +104,7 @@ class ScoreBreakdown(BaseValueObject):
 # ------------------------------------------------------------------
 # JDAnalysis
 # ------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class JDAnalysis(BaseValueObject):
@@ -139,11 +142,12 @@ class JDAnalysis(BaseValueObject):
 # ATSScore
 # ------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class ATSScore(BaseValueObject):
     """Overall ATS compatibility score with per-category breakdown."""
 
-    overall: float            # Weighted score in [0.0, 1.0]
+    overall: float  # Weighted score in [0.0, 1.0]
     breakdown: ScoreBreakdown
 
     def __post_init__(self) -> None:
@@ -165,6 +169,7 @@ class ATSScore(BaseValueObject):
 # ------------------------------------------------------------------
 # GapReport
 # ------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class GapReport(BaseValueObject):

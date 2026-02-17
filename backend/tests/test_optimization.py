@@ -100,8 +100,7 @@ def _make_result(session_id: uuid.UUID) -> OptimizationResult:
         jd_analysis=_make_jd_analysis(),
         optimized_sections={
             "experience": [
-                "Built microservices on AWS ECS, "
-                "reducing deploy time by 40%",
+                "Built microservices on AWS ECS, reducing deploy time by 40%",
             ],
             "skills_summary": [
                 "Python | AWS | Docker | FastAPI | Microservices",
@@ -117,6 +116,7 @@ def _make_result(session_id: uuid.UUID) -> OptimizationResult:
 # ===================================================================
 # SessionStatus
 # ===================================================================
+
 
 class TestSessionStatus:
     """Tests for SessionStatus enum transition rules."""
@@ -148,6 +148,7 @@ class TestSessionStatus:
 # ===================================================================
 # ScoreBreakdown
 # ===================================================================
+
 
 class TestScoreBreakdown:
     """Tests for ScoreBreakdown value object."""
@@ -188,6 +189,7 @@ class TestScoreBreakdown:
 # ===================================================================
 # JDAnalysis
 # ===================================================================
+
 
 class TestJDAnalysis:
     """Tests for JDAnalysis value object."""
@@ -237,6 +239,7 @@ class TestJDAnalysis:
 # ATSScore
 # ===================================================================
 
+
 class TestATSScore:
     """Tests for ATSScore value object."""
 
@@ -267,6 +270,7 @@ class TestATSScore:
 # GapReport
 # ===================================================================
 
+
 class TestGapReport:
     """Tests for GapReport value object."""
 
@@ -293,6 +297,7 @@ class TestGapReport:
 # ===================================================================
 # OptimizationSession (Aggregate Root)
 # ===================================================================
+
 
 class TestOptimizationSession:
     """Tests for session status transitions and domain events."""
@@ -374,6 +379,7 @@ class TestOptimizationSession:
 # OptimizationResult
 # ===================================================================
 
+
 class TestOptimizationResult:
     """Tests for OptimizationResult entity."""
 
@@ -393,6 +399,7 @@ class TestOptimizationResult:
 # ===================================================================
 # OptimizationSessionFactory
 # ===================================================================
+
 
 class TestOptimizationSessionFactory:
     """Tests for factory creation logic."""
@@ -433,6 +440,7 @@ class TestOptimizationSessionFactory:
 # OptimizationDomainService
 # ===================================================================
 
+
 class TestOptimizationDomainService:
     """Tests for domain service scoring and retry logic."""
 
@@ -448,13 +456,15 @@ class TestOptimizationDomainService:
 
     def test_validate_status_transition_valid(self) -> None:
         OptimizationDomainService.validate_status_transition(
-            SessionStatus.PENDING, SessionStatus.PROCESSING,
+            SessionStatus.PENDING,
+            SessionStatus.PROCESSING,
         )
 
     def test_validate_status_transition_invalid(self) -> None:
         with pytest.raises(ValidationError, match="Invalid status transition"):
             OptimizationDomainService.validate_status_transition(
-                SessionStatus.PENDING, SessionStatus.COMPLETED,
+                SessionStatus.PENDING,
+                SessionStatus.COMPLETED,
             )
 
     def test_calculate_overall_score(self) -> None:
@@ -470,24 +480,38 @@ class TestOptimizationDomainService:
         assert score.breakdown == bd
 
     def test_should_retry_below_threshold(self) -> None:
-        assert OptimizationDomainService.should_retry_rewrite(
-            ats_score=0.60, rewrite_attempts=0,
-        ) is True
+        assert (
+            OptimizationDomainService.should_retry_rewrite(
+                ats_score=0.60,
+                rewrite_attempts=0,
+            )
+            is True
+        )
 
     def test_should_not_retry_above_threshold(self) -> None:
-        assert OptimizationDomainService.should_retry_rewrite(
-            ats_score=0.80, rewrite_attempts=0,
-        ) is False
+        assert (
+            OptimizationDomainService.should_retry_rewrite(
+                ats_score=0.80,
+                rewrite_attempts=0,
+            )
+            is False
+        )
 
     def test_should_not_retry_max_attempts(self) -> None:
-        assert OptimizationDomainService.should_retry_rewrite(
-            ats_score=0.60, rewrite_attempts=2, max_attempts=2,
-        ) is False
+        assert (
+            OptimizationDomainService.should_retry_rewrite(
+                ats_score=0.60,
+                rewrite_attempts=2,
+                max_attempts=2,
+            )
+            is False
+        )
 
 
 # ===================================================================
 # AgentExecutionError
 # ===================================================================
+
 
 class TestAgentExecutionError:
     """Tests for the shared AgentExecutionError exception."""
@@ -507,6 +531,7 @@ class TestAgentExecutionError:
 # ===================================================================
 # Multi-Tenant Isolation (domain-level ID propagation)
 # ===================================================================
+
 
 class TestTenantIsolation:
     """Verify tenant_id is set on domain entities at creation time."""

@@ -78,15 +78,17 @@ class OptimizationSession(AggregateRoot):
             ValidationError: If the transition is not allowed.
         """
         self._transition_to(SessionStatus.PROCESSING)
-        self._add_event(DomainEvent(
-            event_type="optimization.session.processing_started",
-            payload={
-                "session_id": str(self.id),
-                "tenant_id": str(self.tenant_id),
-                "user_id": str(self.user_id),
-                "resume_id": str(self.resume_id),
-            },
-        ))
+        self._add_event(
+            DomainEvent(
+                event_type="optimization.session.processing_started",
+                payload={
+                    "session_id": str(self.id),
+                    "tenant_id": str(self.tenant_id),
+                    "user_id": str(self.user_id),
+                    "resume_id": str(self.resume_id),
+                },
+            )
+        )
 
     def complete(self, result: OptimizationResult) -> None:
         """Move session to COMPLETED and attach the pipeline result.
@@ -99,16 +101,18 @@ class OptimizationSession(AggregateRoot):
         """
         self._transition_to(SessionStatus.COMPLETED)
         self.result = result
-        self._add_event(DomainEvent(
-            event_type="optimization.session.completed",
-            payload={
-                "session_id": str(self.id),
-                "tenant_id": str(self.tenant_id),
-                "user_id": str(self.user_id),
-                "ats_score": result.ats_score.overall if result.ats_score else 0.0,
-                "total_tokens_used": result.total_tokens_used,
-            },
-        ))
+        self._add_event(
+            DomainEvent(
+                event_type="optimization.session.completed",
+                payload={
+                    "session_id": str(self.id),
+                    "tenant_id": str(self.tenant_id),
+                    "user_id": str(self.user_id),
+                    "ats_score": result.ats_score.overall if result.ats_score else 0.0,
+                    "total_tokens_used": result.total_tokens_used,
+                },
+            )
+        )
 
     def fail(self, error_message: str) -> None:
         """Move session to FAILED.
@@ -121,14 +125,16 @@ class OptimizationSession(AggregateRoot):
         """
         self._transition_to(SessionStatus.FAILED)
         self.error_message = error_message
-        self._add_event(DomainEvent(
-            event_type="optimization.session.failed",
-            payload={
-                "session_id": str(self.id),
-                "tenant_id": str(self.tenant_id),
-                "error_message": error_message,
-            },
-        ))
+        self._add_event(
+            DomainEvent(
+                event_type="optimization.session.failed",
+                payload={
+                    "session_id": str(self.id),
+                    "tenant_id": str(self.tenant_id),
+                    "error_message": error_message,
+                },
+            )
+        )
 
     # ----------------------------------------------------------
     # Queries
