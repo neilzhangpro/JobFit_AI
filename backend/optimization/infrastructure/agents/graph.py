@@ -9,6 +9,7 @@ LangGraph ``StateGraph``.
 Architecture reference: docs/07-ai-workflow-architecture.md §2, §4.
 """
 
+from collections.abc import Callable
 from typing import Any, TypedDict
 
 # ------------------------------------------------------------------
@@ -154,7 +155,7 @@ def score_check_router(state: dict[str, Any]) -> str:
 
 
 def result_aggregator_node(
-    state: dict[str, Any],
+    state: OptimizationState,
 ) -> dict[str, Any]:
     """Assemble all pipeline outputs into the final result.
 
@@ -190,14 +191,16 @@ def result_aggregator_node(
 # ------------------------------------------------------------------
 
 
-def _stub_node(name: str):  # type: ignore[no-untyped-def]
+def _stub_node(
+    name: str,
+) -> Callable[[OptimizationState], dict[str, Any]]:
     """Create a pass-through stub for an agent node.
 
     Each stub sets ``current_node`` so integration tests can
     verify graph wiring before real agents are implemented.
     """
 
-    def _node(state: dict[str, Any]) -> dict[str, Any]:
+    def _node(state: OptimizationState) -> dict[str, Any]:
         return {"current_node": name}
 
     _node.__name__ = name

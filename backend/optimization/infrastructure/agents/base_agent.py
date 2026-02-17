@@ -18,6 +18,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from langchain_openai import ChatOpenAI
+from pydantic.types import SecretStr
 
 from config import get_settings
 from shared.domain.exceptions import AgentExecutionError
@@ -158,7 +159,7 @@ class BaseAgent(ABC):
             return ChatOpenAI(
                 model="deepseek-chat",
                 temperature=temperature,
-                api_key=settings.deepseek_api_key,
+                api_key=SecretStr(settings.deepseek_api_key),
                 base_url="https://api.deepseek.com",
                 max_retries=2,
                 timeout=30.0,
@@ -168,7 +169,7 @@ class BaseAgent(ABC):
         return ChatOpenAI(
             model=model_name,
             temperature=temperature,
-            api_key=settings.openai_api_key,
+            api_key=SecretStr(settings.openai_api_key),
             max_retries=2,
             timeout=30.0,
         )
