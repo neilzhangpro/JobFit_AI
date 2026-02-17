@@ -11,17 +11,16 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from shared.domain.aggregate_root import AggregateRoot
-from shared.domain.base_entity import BaseEntity
-from shared.domain.domain_event import DomainEvent
-from shared.domain.exceptions import ValidationError
-
 from optimization.domain.value_objects import (
     ATSScore,
     GapReport,
     JDAnalysis,
     SessionStatus,
 )
+from shared.domain.aggregate_root import AggregateRoot
+from shared.domain.base_entity import BaseEntity
+from shared.domain.domain_event import DomainEvent
+from shared.domain.exceptions import ValidationError
 
 # Minimum JD length to prevent trivially short / empty submissions
 _MIN_JD_LENGTH = 50

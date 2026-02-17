@@ -14,7 +14,6 @@ from enum import Enum
 from shared.domain.base_value_object import BaseValueObject
 from shared.domain.exceptions import ValidationError
 
-
 # ------------------------------------------------------------------
 # SessionStatus Enum
 # ------------------------------------------------------------------
