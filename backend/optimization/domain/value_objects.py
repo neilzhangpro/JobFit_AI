@@ -32,14 +32,6 @@ class SessionStatus(Enum):
     COMPLETED = "completed"
     FAILED = "failed"
 
-    # Transition map — kept as a module constant to avoid rebuilding per call
-    _TRANSITIONS: dict["SessionStatus", set["SessionStatus"]] = {  # type: ignore[misc]
-        "pending": {"processing"},
-        "processing": {"completed", "failed"},
-        "completed": set(),
-        "failed": set(),
-    }
-
     def can_transition_to(self, target: "SessionStatus") -> bool:
         """Check whether moving from *self* to *target* is allowed.
 
@@ -49,13 +41,16 @@ class SessionStatus(Enum):
         Returns:
             True if the transition is valid, False otherwise.
         """
-        allowed: dict[str, set[str]] = {
-            "pending": {"processing"},
-            "processing": {"completed", "failed"},
-            "completed": set(),
-            "failed": set(),
-        }
-        return target.value in allowed.get(self.value, set())
+        return target in _TRANSITIONS.get(self, set())
+
+
+# Defined after SessionStatus so enum members exist
+_TRANSITIONS: dict[SessionStatus, set[SessionStatus]] = {
+    SessionStatus.PENDING: {SessionStatus.PROCESSING},
+    SessionStatus.PROCESSING: {SessionStatus.COMPLETED, SessionStatus.FAILED},
+    SessionStatus.COMPLETED: set(),
+    SessionStatus.FAILED: set(),
+}
 
 
 # ------------------------------------------------------------------
