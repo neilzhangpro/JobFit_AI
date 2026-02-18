@@ -9,9 +9,12 @@ Covers:
     - Domain service scoring logic and retry policy
     - AgentExecutionError attributes
     - Multi-tenant ID propagation at domain level
+    - A2 BaseAgent, score_check_router, result_aggregator_node
+    - A3 JDAnalyzerAgent and jd_analyzer_node
 """
 
 import uuid
+from unittest.mock import patch
 
 import pytest
 
@@ -797,3 +800,138 @@ class TestResultAggregatorNode:
         assert fr["optimized_sections"] == {}
         assert fr["errors"] == []
         assert result["total_tokens_used"] == 0
+
+
+# ===================================================================
+# A3 — JD Analyzer Agent
+# ===================================================================
+
+_VALID_JD_JSON = """{
+  "hard_skills": ["Python", "AWS", "Docker"],
+  "soft_skills": ["leadership", "communication"],
+  "responsibilities": ["Design microservices", "Lead code reviews"],
+  "qualifications": ["5+ years backend", "BS Computer Science"],
+  "keyword_weights": { "Python": 0.95, "AWS": 0.85, "Docker": 0.70 }
+}"""
+
+
+class TestJDAnalyzerAgent:
+    """Tests for JDAnalyzerAgent with mocked LLM."""
+
+    def test_valid_jd_returns_jd_analysis_and_token_usage(self) -> None:
+        """With valid JSON from LLM, run() returns jd_analysis and token_usage."""
+        from optimization.infrastructure.agents.jd_analyzer import (
+            JDAnalyzerAgent,
+        )
+
+        state = {"jd_text": "We need a Python backend engineer with 5+ years."}
+        with patch.object(
+            JDAnalyzerAgent,
+            "execute",
+            return_value=_VALID_JD_JSON,
+        ):
+            agent = JDAnalyzerAgent()
+            result = agent.run(state)
+
+        assert "jd_analysis" in result
+        jd = result["jd_analysis"]
+        assert jd["hard_skills"] == ["Python", "AWS", "Docker"]
+        assert "Python" in jd["keyword_weights"]
+        assert jd["keyword_weights"]["Python"] == 0.95
+        assert "token_usage" in result
+        assert "jd_analyzer" in result["token_usage"]
+
+    def test_short_jd_raises_validation_error(self) -> None:
+        """prepare() raises ValidationError when jd_text is too short."""
+        from optimization.infrastructure.agents.jd_analyzer import (
+            JDAnalyzerAgent,
+        )
+
+        agent = JDAnalyzerAgent()
+        state = {"jd_text": "Short"}
+        with pytest.raises(ValidationError, match="too short"):
+            agent.run(state)
+
+    def test_empty_jd_raises_validation_error(self) -> None:
+        """prepare() raises ValidationError for empty jd_text."""
+        from optimization.infrastructure.agents.jd_analyzer import (
+            JDAnalyzerAgent,
+        )
+
+        agent = JDAnalyzerAgent()
+        state = {"jd_text": ""}
+        with pytest.raises(ValidationError, match="too short"):
+            agent.run(state)
+
+    def test_malformed_json_raises_agent_execution_error(self) -> None:
+        """parse_output() raises AgentExecutionError when LLM returns invalid JSON."""
+        from optimization.infrastructure.agents.jd_analyzer import (
+            JDAnalyzerAgent,
+        )
+
+        state = {"jd_text": "A" * 60}
+        with patch.object(
+            JDAnalyzerAgent,
+            "execute",
+            return_value="not valid json {{{",
+        ):
+            agent = JDAnalyzerAgent()
+            with pytest.raises(AgentExecutionError, match="Invalid JSON"):
+                agent.run(state)
+
+    def test_missing_required_key_raises_agent_execution_error(
+        self,
+    ) -> None:
+        """parse_output() raises when a required key is missing."""
+        from optimization.infrastructure.agents.jd_analyzer import (
+            JDAnalyzerAgent,
+        )
+
+        state = {"jd_text": "B" * 60}
+        bad_json = (
+            '{"hard_skills": [], "soft_skills": [], '
+            '"responsibilities": [], "qualifications": []}'
+        )
+        with patch.object(JDAnalyzerAgent, "execute", return_value=bad_json):
+            agent = JDAnalyzerAgent()
+            with pytest.raises(AgentExecutionError, match="keyword_weights"):
+                agent.run(state)
+
+    def test_prompt_includes_system_instructions(self) -> None:
+        """prepare() returns jd_text; full prompt built in execute (arch doc §3.2)."""
+        from optimization.infrastructure.agents.jd_analyzer import (
+            JDAnalyzerAgent,
+        )
+
+        jd_text = "We are looking for a Python backend engineer with AWS."
+        state = {"jd_text": jd_text}
+        agent = JDAnalyzerAgent()
+        prompt = agent.prepare(state)
+        assert prompt == jd_text
+        assert "Python" in prompt
+
+
+class TestJDAnalyzerNode:
+    """Tests for jd_analyzer_node as LangGraph node."""
+
+    def test_node_returns_partial_state_with_jd_analysis(self) -> None:
+        """jd_analyzer_node returns dict with jd_analysis and token_usage."""
+        from optimization.infrastructure.agents.jd_analyzer import (
+            jd_analyzer_node,
+        )
+
+        state = {"jd_text": "Python backend engineer with 5+ years experience."}
+        with patch(
+            "optimization.infrastructure.agents.jd_analyzer."
+            "JDAnalyzerAgent.execute",
+            return_value=_VALID_JD_JSON,
+        ):
+            result = jd_analyzer_node(state)
+
+        assert "jd_analysis" in result
+        assert result["jd_analysis"]["hard_skills"] == [
+            "Python",
+            "AWS",
+            "Docker",
+        ]
+        assert "token_usage" in result

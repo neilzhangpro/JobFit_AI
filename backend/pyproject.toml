@@ -31,6 +31,7 @@ disallow_untyped_defs = true
 # Third-party AI/ML libraries without type stubs
 [[tool.mypy.overrides]]
 module = [
+    "langchain_core.*",
     "langchain_openai.*",
     "langgraph.*",
     "chromadb.*",

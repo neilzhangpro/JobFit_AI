@@ -226,10 +226,14 @@ def build_optimization_graph():  # type: ignore[no-untyped-def]
 
     graph = StateGraph(OptimizationState)
 
-    # --- Register nodes (stubs until real agents land) ---
+    # --- Register nodes ---
+    from optimization.infrastructure.agents.jd_analyzer import (
+        jd_analyzer_node,
+    )
+
     # Cast nodes to satisfy LangGraph's strict add_node overloads
     nodes: dict[str, Any] = {
-        "jd_analysis": _stub_node("jd_analysis"),
+        "jd_analysis": jd_analyzer_node,
         "resume_retrieval": _stub_node("resume_retrieval"),
         "resume_rewriting": _stub_node("resume_rewriting"),
         "ats_scoring": _stub_node("ats_scoring"),
