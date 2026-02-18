@@ -76,7 +76,8 @@ class JDAnalyzerAgent(BaseAgent):
         response = model.invoke(messages)
         metadata: dict[str, Any] = getattr(response, "response_metadata", {}) or {}
         self._last_token_count = self._track_tokens(metadata, "jd_analyzer")
-        return response.content if hasattr(response, "content") else str(response)
+        content = response.content if hasattr(response, "content") else response
+        return content if isinstance(content, str) else str(content)
 
     def parse_output(self, raw_output: str) -> dict[str, Any]:
         """Parse and validate JSON into JDAnalysisDict.
