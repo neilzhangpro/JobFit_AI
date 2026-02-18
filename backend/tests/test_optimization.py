@@ -824,7 +824,9 @@ class TestJDAnalyzerAgent:
             JDAnalyzerAgent,
         )
 
-        state = {"jd_text": "We need a Python backend engineer with 5+ years of experience."}
+        state = {
+            "jd_text": "We need a Python backend engineer with 5+ years of experience.",
+        }
         with patch.object(
             JDAnalyzerAgent,
             "execute",
@@ -920,7 +922,9 @@ class TestJDAnalyzerNode:
             jd_analyzer_node,
         )
 
-        state = {"jd_text": "Python backend engineer with 5+ years of experience required."}
+        state = {
+            "jd_text": "Python backend engineer with 5+ years of experience required.",
+        }
         with patch(
             "optimization.infrastructure.agents.jd_analyzer.JDAnalyzerAgent.execute",
             return_value=_VALID_JD_JSON,
