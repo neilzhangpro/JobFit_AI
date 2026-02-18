@@ -922,8 +922,7 @@ class TestJDAnalyzerNode:
 
         state = {"jd_text": "Python backend engineer with 5+ years experience."}
         with patch(
-            "optimization.infrastructure.agents.jd_analyzer."
-            "JDAnalyzerAgent.execute",
+            "optimization.infrastructure.agents.jd_analyzer.JDAnalyzerAgent.execute",
             return_value=_VALID_JD_JSON,
         ):
             result = jd_analyzer_node(state)
