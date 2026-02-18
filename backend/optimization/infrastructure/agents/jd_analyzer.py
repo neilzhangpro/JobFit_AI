@@ -2,7 +2,7 @@
 
 First agent in the optimization pipeline. Produces JDAnalysisDict that
 downstream agents (RAG retriever, rewriter, scorer, gap analyzer) depend on.
-Uses GPT-4o-mini with temperature 0.0 for deterministic extraction.
+Model and temperature come from Settings (jd_analyzer_model, jd_analyzer_temperature).
 """
 
 import json
@@ -10,6 +10,7 @@ from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from config import get_settings
 from optimization.infrastructure.agents.base_agent import BaseAgent
 from optimization.infrastructure.agents.graph import JDAnalysisDict
 from shared.domain.exceptions import AgentExecutionError, ValidationError
@@ -59,13 +60,14 @@ class JDAnalyzerAgent(BaseAgent):
         return jd_text
 
     def execute(self, prompt: str) -> str:
-        """Call GPT-4o-mini and return raw JSON content.
+        """Call LLM (model/temperature from Settings) and return raw JSON content.
 
         Sets ``_last_token_count`` from response metadata for token tracking.
         """
+        settings = get_settings()
         model = self._get_model(
-            model_name="gpt-4o-mini",
-            temperature=0.0,
+            model_name=settings.jd_analyzer_model,
+            temperature=settings.jd_analyzer_temperature,
         )
         messages = [
             SystemMessage(content=_SYSTEM_PROMPT),
