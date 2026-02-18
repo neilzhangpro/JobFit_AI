@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     deepseek_api_key: str = ""
     llm_provider: str = "openai"
+    # JD Analyzer agent (optimization pipeline)
+    jd_analyzer_model: str = "gpt-4o-mini"
+    jd_analyzer_temperature: float = 0.0
 
     # --- Vector Store ---
     chroma_host: str = "chromadb"

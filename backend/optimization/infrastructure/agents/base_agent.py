@@ -21,7 +21,7 @@ from langchain_openai import ChatOpenAI
 from pydantic.types import SecretStr
 
 from config import get_settings
-from shared.domain.exceptions import AgentExecutionError
+from shared.domain.exceptions import AgentExecutionError, ValidationError
 
 
 class BaseAgent(ABC):
@@ -82,6 +82,9 @@ class BaseAgent(ABC):
 
         except AgentExecutionError:
             # Already wrapped — re-raise without double-wrapping
+            raise
+        except ValidationError:
+            # Domain validation (e.g. invalid input) — do not wrap
             raise
         except Exception as exc:
             self._logger.error("Agent %s failed: %s", agent_name, str(exc))
