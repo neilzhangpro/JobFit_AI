@@ -7,6 +7,8 @@ LLM-dependent agents (jd_analyzer) are imported lazily so that
 RAG-only tests can run without langchain_openai/langchain_core.
 """
 
+from typing import Any
+
 from optimization.infrastructure.agents.base_agent import BaseAgent
 from optimization.infrastructure.agents.graph import (
     AgentErrorDict,
@@ -21,7 +23,7 @@ from optimization.infrastructure.agents.graph import (
 )
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> Any:
     """Lazy-load agent modules so RAG tests can run without LLM deps."""
     if name in ("JDAnalyzerAgent", "jd_analyzer_node"):
         from optimization.infrastructure.agents import jd_analyzer

@@ -15,9 +15,12 @@ Covers:
 """
 
 import uuid
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+from optimization.infrastructure.agents.graph import JDAnalysisDict
 
 from optimization.domain.entities import OptimizationResult, OptimizationSession
 from optimization.domain.factories import OptimizationSessionFactory
@@ -976,7 +979,7 @@ _SAMPLE_RAW_CHUNKS = [
 
 
 def _make_mock_vector_store(
-    return_value: list[dict],
+    return_value: list[dict[str, Any]],
 ) -> MagicMock:
     """Create a mock VectorStoreReader that returns the given chunks."""
     mock = MagicMock()
@@ -1080,11 +1083,13 @@ class TestRAGRetrieverAgent:
 
     def test_query_builds_from_keywords(self) -> None:
         """prepare() builds query from hard_skills, soft_skills, keyword_weights."""
+        from typing import cast
+
         from optimization.infrastructure.agents.rag_retriever import (
             _build_query_from_jd,
         )
 
-        query = _build_query_from_jd(_SAMPLE_JD_ANALYSIS)
+        query = _build_query_from_jd(cast(JDAnalysisDict, _SAMPLE_JD_ANALYSIS))
         assert "Python" in query
         assert "AWS" in query
         assert "Docker" in query
