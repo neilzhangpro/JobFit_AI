@@ -78,11 +78,14 @@ jobs:
 
   # =============================================
   # Deploy to AWS EC2
+  # Skipped unless repo variable DEPLOY_ENABLED=true
+  # To enable: Settings → Variables → Actions → New variable → DEPLOY_ENABLED = true
   # =============================================
   deploy:
     name: "Deploy to Production"
     runs-on: ubuntu-latest
     needs: build
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
     environment: production
     steps:
       - name: Deploy via SSH
