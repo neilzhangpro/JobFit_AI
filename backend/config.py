@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     # JD Analyzer agent (optimization pipeline)
     jd_analyzer_model: str = "gpt-4o-mini"
     jd_analyzer_temperature: float = 0.0
+    # RAG Retriever agent (optimization pipeline — vector search only, no LLM)
+    rag_retriever_top_k: int = 10
+    rag_retriever_relevance_threshold: float = 0.3
 
     # --- Vector Store ---
     chroma_host: str = "chromadb"

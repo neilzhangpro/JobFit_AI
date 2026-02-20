@@ -11,10 +11,11 @@ Covers:
     - Multi-tenant ID propagation at domain level
     - A2 BaseAgent, score_check_router, result_aggregator_node
     - A3 JDAnalyzerAgent and jd_analyzer_node
+    - A4 RAGRetrieverAgent and rag_retriever_node
 """
 
 import uuid
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -938,3 +939,203 @@ class TestJDAnalyzerNode:
             "Docker",
         ]
         assert "token_usage" in result
+
+
+# ---------------------------------------------------------------------------
+# A4 RAG Retriever — test fixtures
+# ---------------------------------------------------------------------------
+
+_SAMPLE_JD_ANALYSIS = {
+    "hard_skills": ["Python", "AWS", "Docker"],
+    "soft_skills": ["leadership"],
+    "responsibilities": [],
+    "qualifications": [],
+    "keyword_weights": {"Python": 0.95, "AWS": 0.85},
+}
+
+_SAMPLE_RAW_CHUNKS = [
+    {
+        "id": "r1_0",
+        "content": "Built microservices on AWS ECS using Python",
+        "metadata": {"section_type": "experience", "resume_id": "r1"},
+        "relevance_score": 0.88,
+    },
+    {
+        "id": "r1_1",
+        "content": "Python | FastAPI | AWS | Docker",
+        "metadata": {"section_type": "skills", "resume_id": "r1"},
+        "relevance_score": 0.72,
+    },
+    {
+        "id": "r1_2",
+        "content": "Led team of 5 engineers",
+        "metadata": {"section_type": "experience", "resume_id": "r1"},
+        "relevance_score": 0.25,
+    },
+]
+
+
+def _make_mock_vector_store(
+    return_value: list[dict],
+) -> MagicMock:
+    """Create a mock VectorStoreReader that returns the given chunks."""
+    mock = MagicMock()
+    mock.search.return_value = return_value
+    return mock
+
+
+class TestRAGRetrieverAgent:
+    """Tests for RAGRetrieverAgent with mocked vector store."""
+
+    def test_valid_query_returns_relevant_chunks(self) -> None:
+        """run() returns relevant_chunks from vector search."""
+        from optimization.infrastructure.agents.rag_retriever import (
+            RAGRetrieverAgent,
+        )
+
+        mock_vs = _make_mock_vector_store(_SAMPLE_RAW_CHUNKS)
+        state = {
+            "tenant_id": str(TENANT_A_ID),
+            "jd_analysis": _SAMPLE_JD_ANALYSIS,
+        }
+        agent = RAGRetrieverAgent(vector_store=mock_vs)
+        result = agent.run(state)
+
+        assert "relevant_chunks" in result
+        chunks = result["relevant_chunks"]
+        # Chunk with score 0.25 should be filtered (default threshold 0.3)
+        assert len(chunks) == 2
+        assert chunks[0]["content"] == "Built microservices on AWS ECS using Python"
+        assert chunks[0]["section_type"] == "experience"
+        assert chunks[0]["relevance_score"] == 0.88
+        mock_vs.search.assert_called_once()
+        call_kwargs = mock_vs.search.call_args[1]
+        assert call_kwargs["tenant_id"] == str(TENANT_A_ID)
+        assert "Python" in call_kwargs["query"]
+        assert "AWS" in call_kwargs["query"]
+
+    def test_missing_tenant_id_raises_validation_error(self) -> None:
+        """prepare() raises ValidationError when tenant_id is missing."""
+        from optimization.infrastructure.agents.rag_retriever import (
+            RAGRetrieverAgent,
+        )
+
+        mock_vs = _make_mock_vector_store([])
+        agent = RAGRetrieverAgent(vector_store=mock_vs)
+        state = {"jd_analysis": _SAMPLE_JD_ANALYSIS}
+        with pytest.raises(ValidationError, match="tenant_id"):
+            agent.run(state)
+
+    def test_missing_jd_analysis_raises_validation_error(self) -> None:
+        """prepare() raises ValidationError when jd_analysis is missing."""
+        from optimization.infrastructure.agents.rag_retriever import (
+            RAGRetrieverAgent,
+        )
+
+        mock_vs = _make_mock_vector_store([])
+        agent = RAGRetrieverAgent(vector_store=mock_vs)
+        state = {"tenant_id": str(TENANT_A_ID)}
+        with pytest.raises(ValidationError, match="jd_analysis"):
+            agent.run(state)
+
+    def test_empty_collection_returns_empty_chunks(self) -> None:
+        """Zero results from ChromaDB returns empty relevant_chunks."""
+        from optimization.infrastructure.agents.rag_retriever import (
+            RAGRetrieverAgent,
+        )
+
+        mock_vs = _make_mock_vector_store([])
+        state = {
+            "tenant_id": str(TENANT_A_ID),
+            "jd_analysis": _SAMPLE_JD_ANALYSIS,
+        }
+        agent = RAGRetrieverAgent(vector_store=mock_vs)
+        result = agent.run(state)
+
+        assert result["relevant_chunks"] == []
+
+    def test_relevance_threshold_filters_low_scores(self) -> None:
+        """Chunks below relevance threshold are discarded."""
+        from optimization.infrastructure.agents.rag_retriever import (
+            RAGRetrieverAgent,
+        )
+
+        low_score_chunks = [
+            {
+                "id": "x",
+                "content": "Low relevance text",
+                "metadata": {"section_type": "other"},
+                "relevance_score": 0.15,
+            },
+        ]
+        mock_vs = _make_mock_vector_store(low_score_chunks)
+        state = {
+            "tenant_id": str(TENANT_A_ID),
+            "jd_analysis": _SAMPLE_JD_ANALYSIS,
+        }
+        agent = RAGRetrieverAgent(vector_store=mock_vs)
+        result = agent.run(state)
+
+        assert result["relevant_chunks"] == []
+
+    def test_query_builds_from_keywords(self) -> None:
+        """prepare() builds query from hard_skills, soft_skills, keyword_weights."""
+        from optimization.infrastructure.agents.rag_retriever import (
+            _build_query_from_jd,
+        )
+
+        query = _build_query_from_jd(_SAMPLE_JD_ANALYSIS)
+        assert "Python" in query
+        assert "AWS" in query
+        assert "Docker" in query
+        assert "leadership" in query
+
+    def test_query_empty_jd_uses_fallback(self) -> None:
+        """Empty JD analysis triggers fallback query in execute."""
+        from optimization.infrastructure.agents.rag_retriever import (
+            RAGRetrieverAgent,
+        )
+
+        mock_vs = _make_mock_vector_store([])
+        state = {
+            "tenant_id": str(TENANT_A_ID),
+            "jd_analysis": {
+                "hard_skills": [],
+                "soft_skills": [],
+                "responsibilities": [],
+                "qualifications": [],
+                "keyword_weights": {},
+            },
+        }
+        agent = RAGRetrieverAgent(vector_store=mock_vs)
+        result = agent.run(state)
+
+        assert "relevant_chunks" in result
+        assert mock_vs.search.call_args[1]["query"] == "experience skills projects"
+
+
+class TestRAGRetrieverNode:
+    """Tests for rag_retriever_node as LangGraph node."""
+
+    def test_node_returns_partial_state_with_relevant_chunks(self) -> None:
+        """rag_retriever_node returns dict with relevant_chunks."""
+        from optimization.infrastructure.agents import rag_retriever as rag_mod
+        from optimization.infrastructure.agents.rag_retriever import (
+            rag_retriever_node,
+        )
+
+        mock_vs = _make_mock_vector_store(_SAMPLE_RAW_CHUNKS)
+        state = {
+            "tenant_id": str(TENANT_A_ID),
+            "jd_analysis": _SAMPLE_JD_ANALYSIS,
+        }
+        with patch.object(
+            rag_mod,
+            "_default_vector_store",
+            return_value=mock_vs,
+        ):
+            result = rag_retriever_node(state)
+
+        assert "relevant_chunks" in result
+        assert len(result["relevant_chunks"]) == 2
+        assert result["relevant_chunks"][0]["section_type"] == "experience"

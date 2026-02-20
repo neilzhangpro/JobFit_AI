@@ -30,7 +30,7 @@ Each PR follows the conventions in
 | `shared/` | ✅ Implemented (base entities, middleware, DB, UoW, tenant context) | Both |
 | `identity/` | ✅ Implemented (register, login, JWT, refresh) | Tomie (B) |
 | `resume/` | ✅ Implemented (upload, parse, CRUD, ChromaDB vector store) | Tomie (B) |
-| `optimization/` | 🟡 A1–A2 done; A3 JD Analyzer done | Brandy (A) |
+| `optimization/` | 🟡 A1–A3 done; A4 RAG Retriever done | Brandy (A) |
 | `interview/` | 🔲 Scaffolded — all files are stubs/TODOs | Brandy (A) |
 | `billing/` | 🔲 Scaffolded — all files are stubs/TODOs | Tomie (B) |
 | `frontend/` | 🔲 Scaffolded — API client, hooks, pages, components are stubs | Tomie (B) |
@@ -265,7 +265,9 @@ Bridges the Resume context (upstream) and Optimization context (downstream).
 Provides relevant resume chunks for the Resume Rewriter.
 
 ## Changes
+- `config.py` — Add rag_retriever_top_k, rag_retriever_relevance_threshold
 - `optimization/infrastructure/agents/rag_retriever.py` — RAGRetrieverAgent + rag_retriever_node()
+- `optimization/infrastructure/agents/graph.py` — Wire rag_retriever_node (replace stub)
 - `tests/test_optimization.py` — Tests for query construction, empty collection fallback, relevance filtering
 
 ## Testing
@@ -277,7 +279,10 @@ Provides relevant resume chunks for the Resume Rewriter.
 
 ### Files Touched
 
+- `config.py`
 - `optimization/infrastructure/agents/rag_retriever.py`
+- `optimization/infrastructure/agents/graph.py`
+- `optimization/infrastructure/agents/__init__.py`
 - `tests/test_optimization.py`
 
 ---
