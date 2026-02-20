@@ -28,11 +28,14 @@ from sqlalchemy.ext.asyncio import (  # noqa: E402
     create_async_engine,
 )
 
+# Import ORM models so they register with Base.metadata
+from billing.infrastructure.models import (  # noqa: E402, F401
+    SubscriptionModel,
+    UsageRecordModel,
+)
 from config import Settings  # noqa: E402
 from identity.domain.services import PasswordHashingService  # noqa: E402
 from identity.infrastructure.jwt_service import JWTService  # noqa: E402
-
-# Import ORM models so they register with Base.metadata
 from identity.infrastructure.models import TenantModel, UserModel  # noqa: E402, F401
 from resume.infrastructure.models import (  # noqa: E402, F401
     ResumeModel,
