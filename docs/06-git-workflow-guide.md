@@ -10,7 +10,7 @@ This document defines the team's Git workflow, branch management, commit convent
 
 Trunk-based development: `main` is the only long-lived branch. All feature and fix branches branch from and merge into `main`.
 
-```
+```text
 main ─────────────────────────────────────────────── (trunk; production-ready)
   │         │         │
   ├── feature/resume-upload     (Person B)
