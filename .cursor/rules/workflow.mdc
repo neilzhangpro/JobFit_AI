@@ -8,7 +8,7 @@ alwaysApply: true
 Every feature or bugfix MUST follow this strict order:
 
 ## Step 1: Branch
-- Create a branch from `develop` (NEVER from `main` directly)
+- Create a branch from `main` (trunk-based development, `main` is the only long-lived branch)
 - Naming: `feature/<context>-<description>` or `fix/<context>-<description>`
 - Example: `feature/optimization-jd-analyzer`, `fix/resume-pdf-parsing`
 
@@ -43,7 +43,7 @@ Every feature or bugfix MUST follow this strict order:
 
 ## Step 7: Push and PR
 - Push to origin: `git push -u origin feature/xxx`
-- Create PR targeting `develop` (NEVER target `main` for features)
+- Create PR targeting `main` (all PRs merge into `main`)
 - PR title follows Conventional Commits format
 - PR description must include: Summary, Motivation, Changes, Testing checklist
 - PR must be < 400 lines of changed code — split larger changes
@@ -51,5 +51,5 @@ Every feature or bugfix MUST follow this strict order:
 - Use "Squash and merge" to keep history clean
 
 ## Sync Daily
-- Run `git fetch origin && git rebase origin/develop` daily to avoid merge conflicts
+- Run `git fetch origin && git rebase origin/main` daily to avoid merge conflicts
 - Use `--force-with-lease` (never `--force`) when pushing after rebase
