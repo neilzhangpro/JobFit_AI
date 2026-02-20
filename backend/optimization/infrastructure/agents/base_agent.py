@@ -15,13 +15,13 @@ Cross-cutting concerns handled here:
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any
-
-from langchain_openai import ChatOpenAI
-from pydantic.types import SecretStr
+from typing import TYPE_CHECKING, Any
 
 from config import get_settings
 from shared.domain.exceptions import AgentExecutionError, ValidationError
+
+if TYPE_CHECKING:
+    from langchain_openai import ChatOpenAI
 
 
 class BaseAgent(ABC):
@@ -141,7 +141,7 @@ class BaseAgent(ABC):
         self,
         model_name: str = "gpt-4o-mini",
         temperature: float = 0.0,
-    ) -> ChatOpenAI:
+    ) -> "ChatOpenAI":
         """Create an LLM chat-model instance.
 
         The provider is selected based on ``Settings.llm_provider``:
@@ -156,6 +156,9 @@ class BaseAgent(ABC):
         Returns:
             Configured ``ChatOpenAI`` instance.
         """
+        from langchain_openai import ChatOpenAI
+        from pydantic.types import SecretStr
+
         settings = get_settings()
 
         if settings.llm_provider == "deepseek":
