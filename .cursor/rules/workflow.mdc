@@ -49,6 +49,7 @@ Every feature or bugfix MUST follow this strict order:
 - PR must be < 400 lines of changed code — split larger changes
 - Wait for: CI pipeline (6 checks) + AI review bot + human code owner approval
 - Use "Squash and merge" to keep history clean
+- For an AI-assisted flow (Linear → branch → commit → PR → merge), see CONTRIBUTING.md §12 (AI-Assisted Workflow).
 
 ## Sync Daily
 - Run `git fetch origin && git rebase origin/main` daily to avoid merge conflicts

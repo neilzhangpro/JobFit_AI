@@ -8,25 +8,24 @@ This document defines the team's Git workflow, branch management, commit convent
 
 ### 1.1 Branch Overview
 
-```
-main ─────────────────────────────────────────────── (production)
-  │
-  └── develop ────────────────────────────────────── (integration)
-        │         │         │
-        ├── feature/resume-upload     (Person B)
-        ├── feature/jd-analyzer       (Person A)
-        └── fix/pdf-parsing-error     (Person B)
+Trunk-based development: `main` is the only long-lived branch. All feature and fix branches branch from and merge into `main`.
+
+```text
+main ─────────────────────────────────────────────── (trunk; production-ready)
+  │         │         │
+  ├── feature/resume-upload     (Person B)
+  ├── feature/jd-analyzer       (Person A)
+  └── fix/pdf-parsing-error     (Person B)
 ```
 
 ### 1.2 Branch Definitions
 
 | Branch | Purpose | Branch From | Merge Into | Protection |
 |--------|---------|-------------|-----------|------------|
-| `main` | Production-ready code. Always deployable. | — | — | Protected: requires PR + passing CI + 1 approval |
-| `develop` | Integration branch. Latest tested features. | `main` | `main` (via release PR) | Protected: requires passing CI |
-| `feature/<name>` | New feature development | `develop` | `develop` (via PR) | No protection |
-| `fix/<name>` | Bug fixes (non-urgent) | `develop` | `develop` (via PR) | No protection |
-| `hotfix/<name>` | Production emergency fix | `main` | `main` AND `develop` | No protection |
+| `main` | Trunk. Production-ready code. Always deployable. | — | — | Protected: requires PR + passing CI + 1 approval |
+| `feature/<name>` | New feature development | `main` | `main` (via PR) | No protection |
+| `fix/<name>` | Bug fixes (non-urgent) | `main` | `main` (via PR) | No protection |
+| `hotfix/<name>` | Production emergency fix | `main` | `main` (via PR) | No protection |
 
 ### 1.3 Branch Naming Convention
 
@@ -59,9 +58,9 @@ main ─────────────────────────
 ### 2.1 Starting a New Feature
 
 ```bash
-# 1. Ensure develop is up to date
-git checkout develop
-git pull origin develop
+# 1. Ensure main is up to date
+git checkout main
+git pull origin main
 
 # 2. Create feature branch
 git checkout -b feature/optimization-jd-analyzer
@@ -87,16 +86,16 @@ Closes #12"
 
 ### 2.3 Keeping Your Branch Up to Date
 
-Sync with `develop` regularly (at least daily) to avoid large merge conflicts:
+Sync with `main` regularly (at least daily) to avoid large merge conflicts:
 
 ```bash
 # Option A: Rebase (preferred for clean history)
 git fetch origin
-git rebase origin/develop
+git rebase origin/main
 
 # Option B: Merge (simpler, but creates merge commits)
 git fetch origin
-git merge origin/develop
+git merge origin/main
 ```
 
 **When to use which:**
@@ -116,7 +115,7 @@ git push
 git push --force-with-lease
 ```
 
-> **NEVER** use `git push --force` on `main` or `develop`. Use `--force-with-lease` on feature branches only after rebase.
+> **NEVER** use `git push --force` on `main`. Use `--force-with-lease` on feature branches only after rebase.
 
 ### 2.5 Creating a Pull Request
 
@@ -130,7 +129,7 @@ make lint
 # 2. Push latest changes
 git push
 
-# 3. Create PR on GitHub (develop <- feature/xxx)
+# 3. Create PR on GitHub (main <- feature/xxx)
 # Use the PR template below
 ```
 
@@ -210,7 +209,7 @@ git commit -m "chore: pin Docker base image to python:3.11.9-slim"
 |-----------|-------------|
 | **Atomic commits** | Each commit should represent one logical change. Don't mix feature code and formatting in one commit. |
 | **Commit often** | Small, frequent commits are easier to review and revert. |
-| **Never commit broken code** | Every commit on `develop` and `main` should pass tests. Feature branches may have WIP commits, but squash before merging. |
+| **Never commit broken code** | Every commit on `main` should pass tests. Feature branches may have WIP commits, but squash before merging. |
 
 ---
 
@@ -264,7 +263,7 @@ N/A
 
 | Rule | Requirement |
 |------|-------------|
-| **Target branch** | Feature PRs target `develop`, not `main`. |
+| **Target branch** | Feature PRs target `main`. |
 | **Size limit** | < 400 lines of changed code. Split larger changes. |
 | **Tests required** | Every PR adding/changing functionality must include tests. |
 | **CI must pass** | All 6 CI jobs (lint, type check, unit test, integration test, coverage, secret scan) must pass. |
@@ -292,15 +291,15 @@ When reviewing a PR, check the following:
 ### 4.5 PR Lifecycle
 
 ```
-1. Developer creates feature branch from develop
+1. Developer creates feature branch from main
 2. Developer implements (test-first workflow)
-3. Developer pushes and creates PR → develop
+3. Developer pushes and creates PR → main
 4. CI pipeline runs automatically (6 quality gates)
 5. AI review bot posts comments
 6. Code owner reviews and provides feedback
 7. Developer addresses feedback, pushes fixes
 8. Code owner approves
-9. "Squash and merge" into develop
+9. "Squash and merge" into main
 10. Delete the feature branch
 ```
 
@@ -327,27 +326,20 @@ The project uses a `.github/CODEOWNERS` file to enforce review assignments:
 
 ## 6. Release Process
 
-### 6.1 Regular Release (develop -> main)
+### 6.1 Tagging a Release
+
+With trunk-based development, `main` is always production-ready. To cut a release:
 
 ```bash
-# 1. Ensure develop is stable and all features are merged
-git checkout develop
-git pull origin develop
-make test && make lint   # All green
-
-# 2. Create release PR: main <- develop
-# PR title: "release: v0.1.0 — MVP launch"
-# PR body: list all features included in this release
-
-# 3. After review and approval, merge to main
-# This triggers the CD pipeline (build -> deploy)
-
-# 4. Tag the release
 git checkout main
 git pull origin main
+make test && make lint   # All green
+
 git tag -a v0.1.0 -m "v0.1.0 — MVP launch"
 git push origin v0.1.0
 ```
+
+This triggers the CD pipeline (build -> deploy) if configured for tags.
 
 ### 6.2 Hotfix (production emergency)
 
@@ -363,10 +355,7 @@ git checkout -b hotfix/auth-token-crash
 # 3. Push and create PR → main
 git push -u origin hotfix/auth-token-crash
 
-# 4. After merge to main (triggers deploy), also merge to develop
-git checkout develop
-git merge main
-git push origin develop
+# 4. After review and merge to main (triggers deploy)
 ```
 
 ---
@@ -377,7 +366,7 @@ git push origin develop
 
 | Practice | Description |
 |----------|-------------|
-| **Sync daily** | Run `git fetch && git rebase origin/develop` on your feature branch daily. |
+| **Sync daily** | Run `git fetch && git rebase origin/main` on your feature branch daily. |
 | **Small PRs** | Keep PRs under 400 lines. Smaller changes = fewer conflicts. |
 | **Communicate** | If two people need to edit the same file, coordinate via chat first. |
 | **Bounded contexts** | DDD structure naturally reduces conflicts — each person works in separate directories. |
@@ -387,7 +376,7 @@ git push origin develop
 ```bash
 # 1. Update your branch
 git fetch origin
-git rebase origin/develop
+git rebase origin/main
 
 # 2. Git will pause at conflicts. For each conflicted file:
 #    - Open the file and look for conflict markers:
@@ -449,7 +438,7 @@ git config --global alias.br branch
 git config --global alias.st status
 git config --global alias.cm "commit -m"
 git config --global alias.lg "log --oneline --graph --decorate -15"
-git config --global alias.sync "!git fetch origin && git rebase origin/develop"
+git config --global alias.sync "!git fetch origin && git rebase origin/main"
 ```
 
 ---
@@ -459,7 +448,7 @@ git config --global alias.sync "!git fetch origin && git rebase origin/develop"
 ```
 ┌─────────────────────── Daily Workflow ───────────────────────┐
 │                                                              │
-│  git checkout develop && git pull                            │
+│  git checkout main && git pull                                │
 │  git checkout -b feature/optimization-rag-pipeline           │
 │                                                              │
 │  ... write tests first, then implement ...                   │
@@ -467,14 +456,14 @@ git config --global alias.sync "!git fetch origin && git rebase origin/develop"
 │  git add . && git commit -m "feat(optimization): ..."        │
 │  git push -u origin feature/optimization-rag-pipeline        │
 │                                                              │
-│  → Create PR on GitHub (target: develop)                     │
+│  → Create PR on GitHub (target: main)                        │
 │  → Wait for CI (6 checks) + AI review + human review         │
 │  → Squash and merge                                          │
 │  → Delete feature branch                                     │
 │                                                              │
 ├─────────────────────── Keep in Sync ─────────────────────────┤
 │                                                              │
-│  git fetch origin && git rebase origin/develop               │
+│  git fetch origin && git rebase origin/main                  │
 │  (do this daily to avoid conflicts)                          │
 │                                                              │
 ├─────────────────────── Commit Format ────────────────────────┤
