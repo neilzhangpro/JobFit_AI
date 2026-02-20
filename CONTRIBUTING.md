@@ -220,9 +220,9 @@ Every feature you build follows this order:
 Let's say you're implementing the JD Analyzer agent:
 
 ```bash
-# 1. Make sure you're on develop and up to date
-git checkout develop
-git pull origin develop
+# 1. Make sure you're on main and up to date
+git checkout main
+git pull origin main
 
 # 2. Create a feature branch
 git checkout -b feature/optimization-jd-analyzer
@@ -252,7 +252,7 @@ Closes #12"
 git push -u origin feature/optimization-jd-analyzer
 ```
 
-Then go to GitHub and create a PR: **develop** <- **feature/optimization-jd-analyzer**
+Then go to GitHub and create a PR: **main** <- **feature/optimization-jd-analyzer**
 
 ### 5.3 Suggested Implementation Order
 
@@ -309,7 +309,7 @@ git commit -m "feat(interview): implement STAR-format answer generator"
 
 1. Push your branch: `git push -u origin feature/optimization-xxx`
 2. Go to GitHub, click **"Compare & pull request"**
-3. Set **base: develop** (NEVER target main directly)
+3. Set **base: main** (all feature PRs target main)
 4. Fill in the description using this template:
 
 ```markdown
@@ -345,7 +345,7 @@ Closes #12
 
 ```bash
 git fetch origin
-git rebase origin/develop
+git rebase origin/main
 ```
 
 If there are conflicts:
@@ -425,7 +425,7 @@ A: Click the failed check on GitHub to see the error log. Common issues:
 **Q: How do I handle merge conflicts?**
 A: See [Git Workflow Guide](docs/06-git-workflow-guide.md) Section 7. Short version:
 ```bash
-git fetch origin && git rebase origin/develop
+git fetch origin && git rebase origin/main
 # Fix conflicts, then: git add . && git rebase --continue
 # Push: git push --force-with-lease
 ```
@@ -436,13 +436,13 @@ git fetch origin && git rebase origin/develop
 
 ```
 Daily routine:
-  git checkout develop && git pull
+  git checkout main && git pull
   git checkout -b feature/optimization-<task>
   ... write tests first, then implement ...
   make lint && make test-backend
   git add . && git commit -m "feat(optimization): ..."
   git push -u origin feature/optimization-<task>
-  → Create PR on GitHub (target: develop)
+  → Create PR on GitHub (target: main)
   → Wait for CI + review → Squash and merge → Delete branch
 
 Commit format:
@@ -473,6 +473,14 @@ The project includes 3 Cursor SKILLs in `.cursor/skills/` that automate the deve
 │  Linear             │     │  → 提交推送         │     │                     │
 └─────────────────────┘     └─────────────────────┘     └─────────────────────┘
 ```
+
+Skill definitions: `.cursor/skills/linear-plan-issues/`, `.cursor/skills/linear-driven-dev/`, `.cursor/skills/pr-ci-merge/` (each contains `SKILL.md`).
+
+| SKILL | Trigger phrases | Purpose |
+|-------|-----------------|---------|
+| linear-plan-issues | "写入Linear", "创建需求", "记录issue", "plan issues" | Conversation → Linear issue |
+| linear-driven-dev | "开始开发", "拉取需求", "下一个任务", "start dev" | Pick issue → branch → develop → commit/push |
+| pr-ci-merge | "创建PR", "提交PR", "检查CI", "合并PR", "merge" | Create PR → monitor CI → merge to main |
 
 ### Prerequisites
 
@@ -597,6 +605,7 @@ You:  创建PR
 | SKILL not triggering | Use exact trigger phrases listed above |
 | Linear MCP not responding | Check Cursor Settings → MCP → `linear` is enabled |
 | CI fails repeatedly (>3 times) | AI stops auto-fix — review errors manually |
+| Branch out of date / CI base branch outdated | Run `git fetch origin && git rebase origin/main`, then push again |
 
 ---
 
