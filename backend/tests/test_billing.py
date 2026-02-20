@@ -417,3 +417,89 @@ def _get_module_source(module: types.ModuleType) -> str:
     import inspect
 
     return inspect.getsource(module)
+
+
+# ===================================================================
+# Domain Service Tests — QuotaEnforcementService
+# ===================================================================
+class TestQuotaEnforcementService:
+    """Tests for the QuotaEnforcementService domain service."""
+
+    def _make_active_subscription(self, plan: Plan = Plan.FREE) -> Subscription:
+        """Helper to create an active Subscription for testing."""
+        now = datetime.utcnow()
+        return Subscription(
+            tenant_id=uuid.uuid4(),
+            plan=plan,
+            status="active",
+            current_period_start=now,
+            current_period_end=now + timedelta(days=30),
+        )
+
+    def test_check_optimization_quota_under_limit_returns_true(
+        self,
+    ) -> None:
+        """Should return True when usage is below optimization limit."""
+        from billing.domain.services import QuotaEnforcementService
+
+        svc = QuotaEnforcementService()
+        sub = self._make_active_subscription(Plan.FREE)
+        assert svc.check_optimization_quota(sub, current_usage=0) is True
+
+    def test_check_optimization_quota_at_limit_raises(self) -> None:
+        """Should raise QuotaExceededError when optimization limit reached."""
+        from billing.domain.services import QuotaEnforcementService
+        from shared.domain.exceptions import QuotaExceededError
+
+        svc = QuotaEnforcementService()
+        sub = self._make_active_subscription(Plan.FREE)
+        quota = get_quota_for_plan(Plan.FREE)
+        with pytest.raises(QuotaExceededError):
+            svc.check_optimization_quota(sub, current_usage=quota.max_optimizations)
+
+    def test_check_token_quota_under_limit_returns_true(self) -> None:
+        """Should return True when usage is below token limit."""
+        from billing.domain.services import QuotaEnforcementService
+
+        svc = QuotaEnforcementService()
+        sub = self._make_active_subscription(Plan.PRO)
+        assert svc.check_token_quota(sub, current_usage=100) is True
+
+    def test_check_token_quota_at_limit_raises(self) -> None:
+        """Should raise QuotaExceededError when token limit reached."""
+        from billing.domain.services import QuotaEnforcementService
+        from shared.domain.exceptions import QuotaExceededError
+
+        svc = QuotaEnforcementService()
+        sub = self._make_active_subscription(Plan.FREE)
+        quota = get_quota_for_plan(Plan.FREE)
+        with pytest.raises(QuotaExceededError):
+            svc.check_token_quota(sub, current_usage=quota.max_tokens)
+
+    def test_check_quota_with_expired_subscription_raises(self) -> None:
+        """Should raise ValidationError for non-active subscriptions."""
+        from billing.domain.services import QuotaEnforcementService
+
+        svc = QuotaEnforcementService()
+        sub = self._make_active_subscription(Plan.FREE)
+        sub.expire()
+        with pytest.raises(ValidationError):
+            svc.check_optimization_quota(sub, current_usage=0)
+
+    def test_check_quota_with_cancelled_subscription_raises(self) -> None:
+        """Should raise ValidationError for cancelled subscriptions."""
+        from billing.domain.services import QuotaEnforcementService
+
+        svc = QuotaEnforcementService()
+        sub = self._make_active_subscription(Plan.PRO)
+        sub.cancel()
+        with pytest.raises(ValidationError):
+            svc.check_token_quota(sub, current_usage=0)
+
+    def test_no_framework_imports_in_services(self) -> None:
+        """services.py should not import SQLAlchemy or FastAPI."""
+        import billing.domain.services as mod
+
+        source = _get_module_source(mod)
+        assert "sqlalchemy" not in source.lower()
+        assert "fastapi" not in source.lower()
