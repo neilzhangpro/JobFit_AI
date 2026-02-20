@@ -25,9 +25,11 @@ def __getattr__(name: str):
     """Lazy-load agent modules so RAG tests can run without LLM deps."""
     if name in ("JDAnalyzerAgent", "jd_analyzer_node"):
         from optimization.infrastructure.agents import jd_analyzer
+
         return getattr(jd_analyzer, name)
     if name in ("RAGRetrieverAgent", "rag_retriever_node"):
         from optimization.infrastructure.agents import rag_retriever
+
         return getattr(rag_retriever, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
