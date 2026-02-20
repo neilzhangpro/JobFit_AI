@@ -20,8 +20,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from optimization.infrastructure.agents.graph import JDAnalysisDict
-
 from optimization.domain.entities import OptimizationResult, OptimizationSession
 from optimization.domain.factories import OptimizationSessionFactory
 from optimization.domain.services import OptimizationDomainService
@@ -32,6 +30,7 @@ from optimization.domain.value_objects import (
     ScoreBreakdown,
     SessionStatus,
 )
+from optimization.infrastructure.agents.graph import JDAnalysisDict
 from shared.domain.exceptions import AgentExecutionError, ValidationError
 
 # ---------------------------------------------------------------------------
