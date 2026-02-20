@@ -46,3 +46,21 @@ class QuotaExceededError(DomainError):
 
     def __init__(self, message: str = "Quota exceeded") -> None:
         super().__init__(message)
+
+
+class AgentExecutionError(DomainError):
+    """Raised when an AI agent fails during pipeline execution.
+
+    Carries the agent name and a ``recoverable`` flag so the pipeline
+    orchestrator can decide whether to retry or abort.
+    """
+
+    def __init__(
+        self,
+        agent_name: str,
+        message: str = "Agent execution failed",
+        recoverable: bool = False,
+    ) -> None:
+        self.agent_name = agent_name
+        self.recoverable = recoverable
+        super().__init__(f"[{agent_name}] {message}")
