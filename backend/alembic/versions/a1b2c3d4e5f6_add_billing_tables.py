@@ -77,14 +77,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index(
-        "ix_usage_records_tenant_resource", table_name="usage_records"
-    )
-    op.drop_index(
-        "ix_usage_records_tenant_id", table_name="usage_records"
-    )
+    op.drop_index("ix_usage_records_tenant_resource", table_name="usage_records")
+    op.drop_index("ix_usage_records_tenant_id", table_name="usage_records")
     op.drop_table("usage_records")
-    op.drop_index(
-        "ix_subscriptions_tenant_id", table_name="subscriptions"
-    )
+    op.drop_index("ix_subscriptions_tenant_id", table_name="subscriptions")
     op.drop_table("subscriptions")
