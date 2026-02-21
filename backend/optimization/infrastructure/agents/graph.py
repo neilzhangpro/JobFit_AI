@@ -214,10 +214,11 @@ def _stub_node(
 
 
 def build_optimization_graph():  # type: ignore[no-untyped-def]
-    """Build and compile the optimization pipeline state graph.
+    """Build and compile the optimization pipeline ``StateGraph``.
 
-    Nodes are registered as stubs in this PR; each subsequent
-    agent PR replaces one stub with its real implementation.
+    Real agent nodes are wired for ``jd_analysis``, ``resume_retrieval``,
+    and ``resume_rewriting``; remaining nodes (``ats_scoring``,
+    ``gap_analysis``) use stubs until their agent PRs land.
 
     Returns:
         A compiled ``StateGraph`` ready for ``.invoke()``.
@@ -233,12 +234,15 @@ def build_optimization_graph():  # type: ignore[no-untyped-def]
     from optimization.infrastructure.agents.rag_retriever import (
         rag_retriever_node,
     )
+    from optimization.infrastructure.agents.resume_rewriter import (
+        resume_rewriter_node,
+    )
 
     # Cast nodes to satisfy LangGraph's strict add_node overloads
     nodes: dict[str, Any] = {
         "jd_analysis": jd_analyzer_node,
         "resume_retrieval": rag_retriever_node,
-        "resume_rewriting": _stub_node("resume_rewriting"),
+        "resume_rewriting": resume_rewriter_node,
         "ats_scoring": _stub_node("ats_scoring"),
         "gap_analysis": _stub_node("gap_analysis"),
         "result_aggregation": result_aggregator_node,
