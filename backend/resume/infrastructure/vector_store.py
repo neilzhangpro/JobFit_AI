@@ -189,7 +189,7 @@ class VectorStoreAdapter:
             collection.upsert(
                 ids=ids,
                 documents=documents,
-                metadatas=metadatas,
+                metadatas=metadatas,  # type: ignore[arg-type]
             )
             logger.info(
                 "Stored %d embeddings for resume %s in tenant %s",
