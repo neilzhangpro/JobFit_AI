@@ -57,10 +57,13 @@ def _rule_based_keyword_score(
     """Compute keyword overlap score: share of JD keywords found in optimized text."""
     keywords: set[str] = set()
     for key in ("hard_skills", "soft_skills", "responsibilities", "qualifications"):
-        for item in jd_analysis.get(key) or []:
+        raw = jd_analysis.get(key)
+        items: list[str] = raw if isinstance(raw, list) else []
+        for item in items:
             if isinstance(item, str) and item.strip():
                 keywords.add(item.strip().lower())
-    weights = jd_analysis.get("keyword_weights") or {}
+    weights_raw = jd_analysis.get("keyword_weights")
+    weights: dict[str, float] = weights_raw if isinstance(weights_raw, dict) else {}
     for k in weights:
         if isinstance(k, str) and k.strip():
             keywords.add(k.strip().lower())
