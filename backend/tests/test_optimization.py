@@ -1177,7 +1177,7 @@ _VALID_REWRITER_JSON = """{
 class TestResumeRewriterAgent:
     """Tests for ResumeRewriterAgent with mocked LLM."""
 
-    def test_first_attempt_returns_optimized_sections(self) -> None:
+    def test_run_first_attempt_returns_optimized_sections(self) -> None:
         """run() returns optimized_sections and token_usage on first attempt."""
         from optimization.infrastructure.agents.resume_rewriter import (
             ResumeRewriterAgent,
@@ -1203,7 +1203,7 @@ class TestResumeRewriterAgent:
         assert "resume_rewriter" in result["token_usage"]
         assert result["rewrite_attempts"] == 1
 
-    def test_rewrite_attempts_incremented(self) -> None:
+    def test_run_rewrite_attempts_incremented(self) -> None:
         """run() increments rewrite_attempts in result."""
         from optimization.infrastructure.agents.resume_rewriter import (
             ResumeRewriterAgent,
@@ -1224,15 +1224,17 @@ class TestResumeRewriterAgent:
         assert result["rewrite_attempts"] == 1
 
         state["rewrite_attempts"] = 1
+        # Use a fresh agent instance to avoid any cached state from the first run
         with patch.object(
             ResumeRewriterAgent,
             "execute",
             return_value=_VALID_REWRITER_JSON,
         ):
-            result = agent.run(state)
+            agent2 = ResumeRewriterAgent()
+            result = agent2.run(state)
         assert result["rewrite_attempts"] == 2
 
-    def test_retry_prompt_includes_score_feedback(self) -> None:
+    def test_prepare_retry_includes_score_feedback(self) -> None:
         """When rewrite_attempts > 0 and ats_score present, system prompt has score."""
         from optimization.infrastructure.agents.resume_rewriter import (
             ResumeRewriterAgent,
@@ -1270,7 +1272,7 @@ class TestResumeRewriterAgent:
         lower = system_prompts[0].lower()
         assert "keywords" in lower or "breakdown" in lower
 
-    def test_missing_jd_analysis_raises_validation_error(self) -> None:
+    def test_prepare_missing_jd_analysis_raises_validation_error(self) -> None:
         """prepare() raises ValidationError when jd_analysis is missing."""
         from optimization.infrastructure.agents.resume_rewriter import (
             ResumeRewriterAgent,
@@ -1281,7 +1283,7 @@ class TestResumeRewriterAgent:
         with pytest.raises(ValidationError, match="jd_analysis"):
             agent.run(state)
 
-    def test_missing_chunks_and_resume_sections_raises_validation_error(
+    def test_prepare_missing_content_source_raises_validation_error(
         self,
     ) -> None:
         """prepare() raises ValidationError when no content source."""
@@ -1294,7 +1296,9 @@ class TestResumeRewriterAgent:
         with pytest.raises(ValidationError, match="relevant_chunks|resume_sections"):
             agent.run(state)
 
-    def test_malformed_json_raises_agent_execution_error(self) -> None:
+    def test_parse_output_malformed_json_raises_agent_execution_error(
+        self,
+    ) -> None:
         """parse_output() raises AgentExecutionError on invalid JSON."""
         from optimization.infrastructure.agents.resume_rewriter import (
             ResumeRewriterAgent,
@@ -1313,7 +1317,7 @@ class TestResumeRewriterAgent:
             with pytest.raises(AgentExecutionError, match="Invalid JSON"):
                 agent.run(state)
 
-    def test_chunk_truncation_respects_max_chars(self) -> None:
+    def test_prepare_chunk_truncation_respects_max_chars(self) -> None:
         """prepare() truncates chunks to max_chunk_chars (via settings)."""
         from optimization.infrastructure.agents.resume_rewriter import (
             ResumeRewriterAgent,
@@ -1350,11 +1354,15 @@ class TestResumeRewriterAgent:
             ):
                 agent = ResumeRewriterAgent()
                 agent.run(state)
-        assert len(captured_prompt) == 1
-        # Truncated content should be 100 chars + "..." in prompt, not full 1200
-        assert "x" * 101 not in captured_prompt[0] or "...\n" in captured_prompt[0]
+        import re as _re
 
-    def test_resume_sections_fallback_when_no_chunks(self) -> None:
+        assert len(captured_prompt) == 1
+        # Full 1200-char string must not appear
+        assert "x" * 101 not in captured_prompt[0]
+        # Truncation marker "x{100}..." must appear (100 chars + "...")
+        assert _re.search(r"x{100}\.\.\.", captured_prompt[0])
+
+    def test_prepare_resume_sections_fallback_when_no_chunks(self) -> None:
         """When relevant_chunks is empty, prepare() uses resume_sections."""
         from optimization.infrastructure.agents.resume_rewriter import (
             ResumeRewriterAgent,
@@ -1382,7 +1390,9 @@ class TestResumeRewriterAgent:
 class TestResumeRewriterNode:
     """Tests for resume_rewriter_node as LangGraph node."""
 
-    def test_node_returns_partial_state_with_optimized_sections(self) -> None:
+    def test_resume_rewriter_node_returns_partial_state_with_optimized_sections(
+        self,
+    ) -> None:
         """resume_rewriter_node returns dict with optimized_sections."""
         from optimization.infrastructure.agents.resume_rewriter import (
             ResumeRewriterAgent,

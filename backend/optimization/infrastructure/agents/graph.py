@@ -214,10 +214,11 @@ def _stub_node(
 
 
 def build_optimization_graph():  # type: ignore[no-untyped-def]
-    """Build and compile the optimization pipeline state graph.
+    """Build and compile the optimization pipeline ``StateGraph``.
 
-    Nodes are registered as stubs in this PR; each subsequent
-    agent PR replaces one stub with its real implementation.
+    Real agent nodes are wired for ``jd_analysis``, ``resume_retrieval``,
+    and ``resume_rewriting``; remaining nodes (``ats_scoring``,
+    ``gap_analysis``) use stubs until their agent PRs land.
 
     Returns:
         A compiled ``StateGraph`` ready for ``.invoke()``.

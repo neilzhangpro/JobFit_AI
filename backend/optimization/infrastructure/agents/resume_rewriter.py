@@ -6,6 +6,7 @@ Model and context limits from Settings.
 """
 
 import json
+import re
 from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -187,11 +188,21 @@ class ResumeRewriterAgent(BaseAgent):
             )
 
         jd: JDAnalysisDict = jd_analysis
+
+        def _join(items: object) -> str:
+            if isinstance(items, list):
+                return ", ".join(str(x) for x in items if x) or "(none)"
+            return str(items) if items else "(none)"
+
+        kw_weights = jd.get("keyword_weights") or {}
+        kw_str = (
+            ", ".join(f"{k}: {v}" for k, v in kw_weights.items()) or "(none)"
+        )
         user_prompt = f"""## Target JD Requirements
-Hard Skills: {jd.get("hard_skills", [])}
-Soft Skills: {jd.get("soft_skills", [])}
-Key Responsibilities: {jd.get("responsibilities", [])}
-Keyword Weights: {jd.get("keyword_weights", {})}
+Hard Skills: {_join(jd.get("hard_skills"))}
+Soft Skills: {_join(jd.get("soft_skills"))}
+Key Responsibilities: {_join(jd.get("responsibilities"))}
+Keyword Weights: {kw_str}
 
 ## Candidate's Relevant Content
 {content_block}
@@ -224,10 +235,15 @@ present above)."""
     def parse_output(self, raw_output: str) -> dict[str, Any]:
         """Parse and validate JSON into optimized_sections.
 
-        Returns only keys that are in _SECTION_KEYS and present in output.
+        Strips markdown code fences before parsing. Returns only keys that
+        are in _SECTION_KEYS and present in output.
         """
+        raw_clean = raw_output.strip()
+        if raw_clean.startswith("```"):
+            raw_clean = re.sub(r"^```\w*\n?", "", raw_clean)
+            raw_clean = re.sub(r"\n?```\s*$", "", raw_clean)
         try:
-            data = json.loads(raw_output)
+            data = json.loads(raw_clean)
         except json.JSONDecodeError as e:
             raise AgentExecutionError(
                 agent_name="ResumeRewriterAgent",
