@@ -195,9 +195,7 @@ class ResumeRewriterAgent(BaseAgent):
             return str(items) if items else "(none)"
 
         kw_weights = jd.get("keyword_weights") or {}
-        kw_str = (
-            ", ".join(f"{k}: {v}" for k, v in kw_weights.items()) or "(none)"
-        )
+        kw_str = ", ".join(f"{k}: {v}" for k, v in kw_weights.items()) or "(none)"
         user_prompt = f"""## Target JD Requirements
 Hard Skills: {_join(jd.get("hard_skills"))}
 Soft Skills: {_join(jd.get("soft_skills"))}
