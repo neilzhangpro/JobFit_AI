@@ -136,3 +136,107 @@ class TestTenantContext:
         TenantContext.clear()
         with pytest.raises(AuthorizationError):
             TenantContext.get_current_tenant_id()
+
+
+# ---------------------------------------------------------------------------
+# InProcessEventBus tests
+# ---------------------------------------------------------------------------
+class TestInProcessEventBus:
+    """Tests for the in-process domain event bus."""
+
+    @pytest.mark.asyncio
+    async def test_subscribe_and_publish_delivers_event(self) -> None:
+        """A subscribed handler should receive the published event."""
+        from shared.infrastructure.event_bus_impl import InProcessEventBus
+
+        bus = InProcessEventBus()
+        received: list[DomainEvent] = []
+
+        async def handler(event: DomainEvent) -> None:
+            received.append(event)
+
+        bus.subscribe("OrderPlaced", handler)
+
+        event = DomainEvent(event_type="OrderPlaced", payload={"order_id": "1"})
+        await bus.publish(event)
+
+        assert len(received) == 1
+        assert received[0].event_type == "OrderPlaced"
+        assert received[0].payload == {"order_id": "1"}
+
+    @pytest.mark.asyncio
+    async def test_multiple_handlers_all_receive_event(self) -> None:
+        """All handlers for the same event type should be invoked."""
+        from shared.infrastructure.event_bus_impl import InProcessEventBus
+
+        bus = InProcessEventBus()
+        calls: list[str] = []
+
+        async def handler_a(event: DomainEvent) -> None:
+            calls.append("a")
+
+        async def handler_b(event: DomainEvent) -> None:
+            calls.append("b")
+
+        bus.subscribe("UserCreated", handler_a)
+        bus.subscribe("UserCreated", handler_b)
+
+        await bus.publish(DomainEvent(event_type="UserCreated"))
+
+        assert sorted(calls) == ["a", "b"]
+
+    @pytest.mark.asyncio
+    async def test_handler_exception_does_not_block_others(self) -> None:
+        """A failing handler must not prevent other handlers from running."""
+        from shared.infrastructure.event_bus_impl import InProcessEventBus
+
+        bus = InProcessEventBus()
+        calls: list[str] = []
+
+        async def failing_handler(event: DomainEvent) -> None:
+            raise RuntimeError("boom")
+
+        async def good_handler(event: DomainEvent) -> None:
+            calls.append("ok")
+
+        bus.subscribe("TestEvent", failing_handler)
+        bus.subscribe("TestEvent", good_handler)
+
+        await bus.publish(DomainEvent(event_type="TestEvent"))
+
+        assert calls == ["ok"]
+
+    @pytest.mark.asyncio
+    async def test_unsubscribed_event_type_is_silently_ignored(self) -> None:
+        """Publishing an event with no subscribers should not raise."""
+        from shared.infrastructure.event_bus_impl import InProcessEventBus
+
+        bus = InProcessEventBus()
+        await bus.publish(DomainEvent(event_type="NobodyListens"))
+
+    @pytest.mark.asyncio
+    async def test_different_event_types_are_isolated(self) -> None:
+        """Handlers for one event type must not receive other types."""
+        from shared.infrastructure.event_bus_impl import InProcessEventBus
+
+        bus = InProcessEventBus()
+        received: list[str] = []
+
+        async def handler(event: DomainEvent) -> None:
+            received.append(event.event_type)
+
+        bus.subscribe("TypeA", handler)
+
+        await bus.publish(DomainEvent(event_type="TypeB"))
+        assert received == []
+
+        await bus.publish(DomainEvent(event_type="TypeA"))
+        assert received == ["TypeA"]
+
+    def test_implements_ieventbus_interface(self) -> None:
+        """InProcessEventBus should be an instance of IEventBus."""
+        from shared.domain.domain_event import IEventBus
+        from shared.infrastructure.event_bus_impl import InProcessEventBus
+
+        bus = InProcessEventBus()
+        assert isinstance(bus, IEventBus)
