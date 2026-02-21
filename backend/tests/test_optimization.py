@@ -12,6 +12,7 @@ Covers:
     - A2 BaseAgent, score_check_router, result_aggregator_node
     - A3 JDAnalyzerAgent and jd_analyzer_node
     - A4 RAGRetrieverAgent and rag_retriever_node
+    - A6 ATSScorerAgent and ats_scorer_node
 """
 
 import uuid
@@ -1143,3 +1144,168 @@ class TestRAGRetrieverNode:
         assert "relevant_chunks" in result
         assert len(result["relevant_chunks"]) == 2
         assert result["relevant_chunks"][0]["section_type"] == "experience"
+
+
+# ---------------------------------------------------------------------------
+# A6 ATS Scorer — test fixtures and tests
+# ---------------------------------------------------------------------------
+
+_SAMPLE_OPTIMIZED_SECTIONS = {
+    "experience": [
+        "Architected and deployed microservices on AWS ECS using Python",
+    ],
+    "skills_summary": [
+        "Backend engineer with Python, FastAPI, AWS, and Docker",
+    ],
+    "projects": [],
+}
+
+_VALID_ATS_JSON = """{
+  "overall": 0.82,
+  "keywords": 0.90,
+  "skills": 0.85,
+  "experience": 0.75,
+  "formatting": 0.80
+}"""
+
+
+class TestATSScorerAgent:
+    """Tests for ATSScorerAgent with mocked LLM and rule-based path."""
+
+    def test_prepare_returns_user_prompt(self) -> None:
+        """prepare() builds prompt from jd_analysis and optimized_sections."""
+        from optimization.infrastructure.agents.ats_scorer import ATSScorerAgent
+
+        agent = ATSScorerAgent()
+        state = {
+            "jd_analysis": _SAMPLE_JD_ANALYSIS,
+            "optimized_sections": _SAMPLE_OPTIMIZED_SECTIONS,
+        }
+        prompt = agent.prepare(state)
+        assert "JD Requirements" in prompt
+        assert "Optimized Resume Sections" in prompt
+        assert "Python" in prompt
+        assert "experience" in prompt
+
+    def test_prepare_raises_when_jd_analysis_missing(self) -> None:
+        """prepare() raises ValidationError when jd_analysis is missing."""
+        from optimization.infrastructure.agents.ats_scorer import ATSScorerAgent
+
+        agent = ATSScorerAgent()
+        state = {"optimized_sections": _SAMPLE_OPTIMIZED_SECTIONS}
+        with pytest.raises(ValidationError, match="jd_analysis"):
+            agent.prepare(state)
+
+    def test_prepare_raises_when_optimized_sections_missing(self) -> None:
+        """prepare() raises ValidationError when optimized_sections is missing."""
+        from optimization.infrastructure.agents.ats_scorer import ATSScorerAgent
+
+        agent = ATSScorerAgent()
+        state = {"jd_analysis": _SAMPLE_JD_ANALYSIS}
+        with pytest.raises(ValidationError, match="optimized_sections"):
+            agent.prepare(state)
+
+    def test_parse_output_returns_ats_score_and_breakdown(self) -> None:
+        """parse_output() returns ats_score and score_breakdown with clamped values."""
+        from optimization.infrastructure.agents.ats_scorer import ATSScorerAgent
+
+        agent = ATSScorerAgent()
+        result = agent.parse_output(_VALID_ATS_JSON)
+        assert "ats_score" in result
+        assert result["ats_score"] == 0.82
+        assert "score_breakdown" in result
+        b = result["score_breakdown"]
+        assert b["keywords"] == 0.9
+        assert b["skills"] == 0.85
+        assert b["experience"] == 0.75
+        assert b["formatting"] == 0.8
+
+    def test_parse_output_clamps_out_of_range_values(self) -> None:
+        """parse_output() clamps scores to [0.0, 1.0]."""
+        from optimization.infrastructure.agents.ats_scorer import ATSScorerAgent
+
+        agent = ATSScorerAgent()
+        raw = (
+            '{"overall": 1.5, "keywords": -0.1, "skills": 0.5,'
+            ' "experience": 0.5, "formatting": 0.5}'
+        )
+        result = agent.parse_output(raw)
+        assert result["ats_score"] == 1.0
+        assert result["score_breakdown"]["keywords"] == 0.0
+
+    def test_parse_output_raises_on_invalid_json(self) -> None:
+        """parse_output() raises AgentExecutionError on invalid JSON."""
+        from optimization.infrastructure.agents.ats_scorer import ATSScorerAgent
+
+        agent = ATSScorerAgent()
+        with pytest.raises(AgentExecutionError, match="Invalid JSON"):
+            agent.parse_output("not json")
+
+    def test_run_with_llm_returns_ats_score_and_token_usage(self) -> None:
+        """run() when below rule threshold returns ats_score, breakdown, usage."""
+        from optimization.infrastructure.agents.ats_scorer import ATSScorerAgent
+
+        state = {
+            "jd_analysis": _SAMPLE_JD_ANALYSIS,
+            "optimized_sections": {
+                "experience": ["short"],
+                "skills_summary": [],
+                "projects": [],
+            },
+        }
+        with patch.object(ATSScorerAgent, "execute", return_value=_VALID_ATS_JSON):
+            agent = ATSScorerAgent()
+            result = agent.run(state)
+        assert "ats_score" in result
+        assert result["ats_score"] == 0.82
+        assert "score_breakdown" in result
+        assert "token_usage" in result
+        assert "ats_scorer" in result["token_usage"]
+
+    def test_run_rule_based_path_when_confidence_high(self) -> None:
+        """run() uses rule-based scores and zero tokens when confidence >= threshold."""
+        from optimization.infrastructure.agents.ats_scorer import ATSScorerAgent
+
+        state = {
+            "jd_analysis": _SAMPLE_JD_ANALYSIS,
+            "optimized_sections": {
+                "experience": ["Python and AWS used here"] * 3,
+                "skills_summary": ["Python", "AWS", "Docker"],
+                "projects": [],
+            },
+        }
+        with patch("optimization.infrastructure.agents.ats_scorer.get_settings") as gs:
+            gs.return_value.ats_scorer_model = "gpt-4o-mini"
+            gs.return_value.ats_scorer_temperature = 0.0
+            gs.return_value.ats_scorer_rule_confidence_threshold = 0.5
+            agent = ATSScorerAgent()
+            result = agent.run(state)
+        assert "ats_score" in result
+        assert "score_breakdown" in result
+        assert result["token_usage"]["ats_scorer"] == 0
+
+
+class TestATSScorerNode:
+    """Tests for ats_scorer_node as LangGraph node."""
+
+    def test_node_returns_partial_state_with_ats_score(self) -> None:
+        """ats_scorer_node returns dict with ats_score and score_breakdown."""
+        from optimization.infrastructure.agents.ats_scorer import (
+            ATSScorerAgent,
+            ats_scorer_node,
+        )
+
+        state = {
+            "jd_analysis": _SAMPLE_JD_ANALYSIS,
+            "optimized_sections": _SAMPLE_OPTIMIZED_SECTIONS,
+        }
+        with patch.object(
+            ATSScorerAgent,
+            "execute",
+            return_value=_VALID_ATS_JSON,
+        ):
+            result = ats_scorer_node(state)
+
+        assert "ats_score" in result
+        assert "score_breakdown" in result
+        assert "token_usage" in result
