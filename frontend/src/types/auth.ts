@@ -1,34 +1,44 @@
 /**
- * TypeScript types for authentication: User, Tenant, LoginRequest, RegisterRequest, TokenResponse.
+ * Auth types matching backend identity DTOs.
+ *
+ * Backend uses snake_case; these mirror the JSON wire format exactly
+ * so no field-name transformation is needed.
  */
 
 export interface User {
-  // TODO: Define user properties
   id: string;
   email: string;
-}
-
-export interface Tenant {
-  // TODO: Define tenant properties
-  id: string;
-  name: string;
+  role: string;
+  tenant_id: string;
+  created_at: string;
 }
 
 export interface LoginRequest {
-  // TODO: Define login request properties
   email: string;
   password: string;
 }
 
 export interface RegisterRequest {
-  // TODO: Define register request properties
   email: string;
   password: string;
-  tenantName?: string;
+  tenant_name: string;
+}
+
+export interface RefreshRequest {
+  refresh_token: string;
 }
 
 export interface TokenResponse {
-  // TODO: Define token response properties
-  accessToken: string;
-  refreshToken?: string;
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+}
+
+export interface AuthState {
+  user: User | null;
+  accessToken: string | null;
+  refreshToken: string | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
 }
