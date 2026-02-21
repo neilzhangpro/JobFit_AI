@@ -1251,18 +1251,19 @@ class TestResumeRewriterAgent:
             },
         }
         system_prompts: list[str] = []
+        agent = ResumeRewriterAgent()
 
-        def capture_system_and_return(_self: object, prompt: str) -> str:
-            agent = _self
+        def capture_and_return(prompt: str) -> str:
+            # agent is captured from the enclosing scope; _system_prompt is
+            # updated by prepare() before execute() is called
             system_prompts.append(getattr(agent, "_system_prompt", ""))
             return _VALID_REWRITER_JSON
 
         with patch.object(
             ResumeRewriterAgent,
             "execute",
-            side_effect=capture_system_and_return,
+            side_effect=capture_and_return,
         ):
-            agent = ResumeRewriterAgent()
             agent.run(state)
         assert len(system_prompts) == 1
         assert "65%" in system_prompts[0]
