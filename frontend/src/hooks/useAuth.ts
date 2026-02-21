@@ -1,12 +1,17 @@
+'use client';
+
+import { useContext } from 'react';
+
+import { AuthContext } from '@/providers/AuthProvider';
+
 /**
- * Custom hook for authentication state and actions (login, register, logout, refresh token).
+ * Typed consumer for AuthContext. Throws if used outside AuthProvider
+ * so call-sites never have to null-check.
  */
 export function useAuth() {
-  // TODO: Implement auth state management
-  return {
-    user: null,
-    login: async () => {},
-    register: async () => {},
-    logout: () => {},
-  };
+  const ctx = useContext(AuthContext);
+  if (!ctx) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return ctx;
 }
