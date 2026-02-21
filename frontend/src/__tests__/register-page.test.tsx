@@ -96,9 +96,7 @@ describe('RegisterPage', () => {
   });
 
   it('displays API error on registration failure', async () => {
-    const registerMock = jest
-      .fn()
-      .mockRejectedValue(new ApiError(400, 'Email already registered'));
+    const registerMock = jest.fn().mockRejectedValue(new ApiError(400, 'Email already registered'));
     renderWithAuth(registerMock);
     const user = userEvent.setup();
 
