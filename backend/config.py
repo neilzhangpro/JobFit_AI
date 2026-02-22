@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     resume_rewriter_temperature: float = 0.7
     resume_rewriter_top_k_chunks: int = 6
     resume_rewriter_max_chunk_chars: int = 900
+    # ATS Scorer agent (optimization pipeline)
+    ats_scorer_model: str = "gpt-4o-mini"
+    ats_scorer_temperature: float = 0.0
+    ats_scorer_rule_confidence_threshold: float = 0.85  # skip LLM if rule >= this
 
     # --- Vector Store ---
     chroma_host: str = "chromadb"
