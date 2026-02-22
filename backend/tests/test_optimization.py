@@ -1147,270 +1147,165 @@ class TestRAGRetrieverNode:
 
 
 # ---------------------------------------------------------------------------
-# A5 Resume Rewriter — test fixtures
+# A6 ATS Scorer — test fixtures and tests
 # ---------------------------------------------------------------------------
 
-_SAMPLE_REWRITER_CHUNKS = [
-    {
-        "section_type": "experience",
-        "content": "Built microservices on AWS ECS using Python.",
-        "relevance_score": 0.88,
-    },
-    {
-        "section_type": "skills_summary",
-        "content": "Python | FastAPI | AWS | Docker",
-        "relevance_score": 0.72,
-    },
-]
+_SAMPLE_OPTIMIZED_SECTIONS = {
+    "experience": [
+        "Architected and deployed microservices on AWS ECS using Python",
+    ],
+    "skills_summary": [
+        "Backend engineer with Python, FastAPI, AWS, and Docker",
+    ],
+    "projects": [],
+}
 
-_VALID_REWRITER_JSON = """{
-  "experience": [
-    "Architected and deployed microservices on AWS ECS using Python"
-  ],
-  "skills_summary": [
-    "Backend engineer with Python, FastAPI, AWS, and Docker"
-  ],
-  "projects": []
+_VALID_ATS_JSON = """{
+  "overall": 0.82,
+  "keywords": 0.90,
+  "skills": 0.85,
+  "experience": 0.75,
+  "formatting": 0.80
 }"""
 
 
-class TestResumeRewriterAgent:
-    """Tests for ResumeRewriterAgent with mocked LLM."""
+class TestATSScorerAgent:
+    """Tests for ATSScorerAgent with mocked LLM and rule-based path."""
 
-    def test_run_first_attempt_returns_optimized_sections(self) -> None:
-        """run() returns optimized_sections and token_usage on first attempt."""
-        from optimization.infrastructure.agents.resume_rewriter import (
-            ResumeRewriterAgent,
-        )
+    def test_prepare_returns_user_prompt(self) -> None:
+        """prepare() builds prompt from jd_analysis and optimized_sections."""
+        from optimization.infrastructure.agents.ats_scorer import ATSScorerAgent
 
+        agent = ATSScorerAgent()
         state = {
             "jd_analysis": _SAMPLE_JD_ANALYSIS,
-            "relevant_chunks": _SAMPLE_REWRITER_CHUNKS,
-            "rewrite_attempts": 0,
+            "optimized_sections": _SAMPLE_OPTIMIZED_SECTIONS,
         }
-        with patch.object(
-            ResumeRewriterAgent,
-            "execute",
-            return_value=_VALID_REWRITER_JSON,
-        ):
-            agent = ResumeRewriterAgent()
-            result = agent.run(state)
+        prompt = agent.prepare(state)
+        assert "JD Requirements" in prompt
+        assert "Optimized Resume Sections" in prompt
+        assert "Python" in prompt
+        assert "experience" in prompt
 
-        assert "optimized_sections" in result
-        assert result["optimized_sections"]["experience"]
-        assert result["optimized_sections"]["skills_summary"]
-        assert "token_usage" in result
-        assert "resume_rewriter" in result["token_usage"]
-        assert result["rewrite_attempts"] == 1
+    def test_prepare_raises_when_jd_analysis_missing(self) -> None:
+        """prepare() raises ValidationError when jd_analysis is missing."""
+        from optimization.infrastructure.agents.ats_scorer import ATSScorerAgent
 
-    def test_run_rewrite_attempts_incremented(self) -> None:
-        """run() increments rewrite_attempts in result."""
-        from optimization.infrastructure.agents.resume_rewriter import (
-            ResumeRewriterAgent,
+        agent = ATSScorerAgent()
+        state = {"optimized_sections": _SAMPLE_OPTIMIZED_SECTIONS}
+        with pytest.raises(ValidationError, match="jd_analysis"):
+            agent.prepare(state)
+
+    def test_prepare_raises_when_optimized_sections_missing(self) -> None:
+        """prepare() raises ValidationError when optimized_sections is missing."""
+        from optimization.infrastructure.agents.ats_scorer import ATSScorerAgent
+
+        agent = ATSScorerAgent()
+        state = {"jd_analysis": _SAMPLE_JD_ANALYSIS}
+        with pytest.raises(ValidationError, match="optimized_sections"):
+            agent.prepare(state)
+
+    def test_parse_output_returns_ats_score_and_breakdown(self) -> None:
+        """parse_output() returns ats_score and score_breakdown with clamped values."""
+        from optimization.infrastructure.agents.ats_scorer import ATSScorerAgent
+
+        agent = ATSScorerAgent()
+        result = agent.parse_output(_VALID_ATS_JSON)
+        assert "ats_score" in result
+        assert result["ats_score"] == 0.82
+        assert "score_breakdown" in result
+        b = result["score_breakdown"]
+        assert b["keywords"] == 0.9
+        assert b["skills"] == 0.85
+        assert b["experience"] == 0.75
+        assert b["formatting"] == 0.8
+
+    def test_parse_output_clamps_out_of_range_values(self) -> None:
+        """parse_output() clamps scores to [0.0, 1.0]."""
+        from optimization.infrastructure.agents.ats_scorer import ATSScorerAgent
+
+        agent = ATSScorerAgent()
+        raw = (
+            '{"overall": 1.5, "keywords": -0.1, "skills": 0.5,'
+            ' "experience": 0.5, "formatting": 0.5}'
         )
+        result = agent.parse_output(raw)
+        assert result["ats_score"] == 1.0
+        assert result["score_breakdown"]["keywords"] == 0.0
+
+    def test_parse_output_raises_on_invalid_json(self) -> None:
+        """parse_output() raises AgentExecutionError on invalid JSON."""
+        from optimization.infrastructure.agents.ats_scorer import ATSScorerAgent
+
+        agent = ATSScorerAgent()
+        with pytest.raises(AgentExecutionError, match="Invalid JSON"):
+            agent.parse_output("not json")
+
+    def test_run_with_llm_returns_ats_score_and_token_usage(self) -> None:
+        """run() when below rule threshold returns ats_score, breakdown, usage."""
+        from optimization.infrastructure.agents.ats_scorer import ATSScorerAgent
 
         state = {
             "jd_analysis": _SAMPLE_JD_ANALYSIS,
-            "relevant_chunks": _SAMPLE_REWRITER_CHUNKS,
-            "rewrite_attempts": 0,
-        }
-        with patch.object(
-            ResumeRewriterAgent,
-            "execute",
-            return_value=_VALID_REWRITER_JSON,
-        ):
-            agent = ResumeRewriterAgent()
-            result = agent.run(state)
-        assert result["rewrite_attempts"] == 1
-
-        state["rewrite_attempts"] = 1
-        # Use a fresh agent instance to avoid any cached state from the first run
-        with patch.object(
-            ResumeRewriterAgent,
-            "execute",
-            return_value=_VALID_REWRITER_JSON,
-        ):
-            agent2 = ResumeRewriterAgent()
-            result = agent2.run(state)
-        assert result["rewrite_attempts"] == 2
-
-    def test_prepare_retry_includes_score_feedback(self) -> None:
-        """When rewrite_attempts > 0 and ats_score present, system prompt has score."""
-        from optimization.infrastructure.agents.resume_rewriter import (
-            ResumeRewriterAgent,
-        )
-
-        state = {
-            "jd_analysis": _SAMPLE_JD_ANALYSIS,
-            "relevant_chunks": _SAMPLE_REWRITER_CHUNKS,
-            "rewrite_attempts": 1,
-            "ats_score": 0.65,
-            "score_breakdown": {
-                "keywords": 0.6,
-                "skills": 0.7,
-                "experience": 0.65,
-                "formatting": 0.7,
+            "optimized_sections": {
+                "experience": ["short"],
+                "skills_summary": [],
+                "projects": [],
             },
         }
-        system_prompts: list[str] = []
-        agent = ResumeRewriterAgent()
-
-        def capture_and_return(prompt: str) -> str:
-            # agent is captured from the enclosing scope; _system_prompt is
-            # updated by prepare() before execute() is called
-            system_prompts.append(getattr(agent, "_system_prompt", ""))
-            return _VALID_REWRITER_JSON
-
-        with patch.object(
-            ResumeRewriterAgent,
-            "execute",
-            side_effect=capture_and_return,
-        ):
-            agent.run(state)
-        assert len(system_prompts) == 1
-        assert "65%" in system_prompts[0]
-        lower = system_prompts[0].lower()
-        assert "keywords" in lower or "breakdown" in lower
-
-    def test_prepare_missing_jd_analysis_raises_validation_error(self) -> None:
-        """prepare() raises ValidationError when jd_analysis is missing."""
-        from optimization.infrastructure.agents.resume_rewriter import (
-            ResumeRewriterAgent,
-        )
-
-        agent = ResumeRewriterAgent()
-        state = {"relevant_chunks": _SAMPLE_REWRITER_CHUNKS}
-        with pytest.raises(ValidationError, match="jd_analysis"):
-            agent.run(state)
-
-    def test_prepare_missing_content_source_raises_validation_error(
-        self,
-    ) -> None:
-        """prepare() raises ValidationError when no content source."""
-        from optimization.infrastructure.agents.resume_rewriter import (
-            ResumeRewriterAgent,
-        )
-
-        agent = ResumeRewriterAgent()
-        state = {"jd_analysis": _SAMPLE_JD_ANALYSIS}
-        with pytest.raises(ValidationError, match="relevant_chunks|resume_sections"):
-            agent.run(state)
-
-    def test_parse_output_malformed_json_raises_agent_execution_error(
-        self,
-    ) -> None:
-        """parse_output() raises AgentExecutionError on invalid JSON."""
-        from optimization.infrastructure.agents.resume_rewriter import (
-            ResumeRewriterAgent,
-        )
-
-        state = {
-            "jd_analysis": _SAMPLE_JD_ANALYSIS,
-            "relevant_chunks": _SAMPLE_REWRITER_CHUNKS,
-        }
-        with patch.object(
-            ResumeRewriterAgent,
-            "execute",
-            return_value="not valid json {{{",
-        ):
-            agent = ResumeRewriterAgent()
-            with pytest.raises(AgentExecutionError, match="Invalid JSON"):
-                agent.run(state)
-
-    def test_prepare_chunk_truncation_respects_max_chars(self) -> None:
-        """prepare() truncates chunks to max_chunk_chars (via settings)."""
-        from optimization.infrastructure.agents.resume_rewriter import (
-            ResumeRewriterAgent,
-        )
-
-        long_content = "x" * 1200
-        state = {
-            "jd_analysis": _SAMPLE_JD_ANALYSIS,
-            "relevant_chunks": [
-                {
-                    "section_type": "experience",
-                    "content": long_content,
-                    "relevance_score": 0.9,
-                },
-            ],
-        }
-        captured_prompt: list[str] = []
-
-        def capture_execute(prompt: str) -> str:
-            captured_prompt.append(prompt)
-            return '{"experience": ["short"]}'
-
-        with patch(
-            "optimization.infrastructure.agents.resume_rewriter.get_settings"
-        ) as gs:
-            gs.return_value.resume_rewriter_top_k_chunks = 6
-            gs.return_value.resume_rewriter_max_chunk_chars = 100
-            gs.return_value.resume_rewriter_model = "gpt-4o"
-            gs.return_value.resume_rewriter_temperature = 0.7
-            with patch.object(
-                ResumeRewriterAgent,
-                "execute",
-                side_effect=capture_execute,
-            ):
-                agent = ResumeRewriterAgent()
-                agent.run(state)
-        import re as _re
-
-        assert len(captured_prompt) == 1
-        # Full 1200-char string must not appear
-        assert "x" * 101 not in captured_prompt[0]
-        # Truncation marker "x{100}..." must appear (100 chars + "...")
-        assert _re.search(r"x{100}\.\.\.", captured_prompt[0])
-
-    def test_prepare_resume_sections_fallback_when_no_chunks(self) -> None:
-        """When relevant_chunks is empty, prepare() uses resume_sections."""
-        from optimization.infrastructure.agents.resume_rewriter import (
-            ResumeRewriterAgent,
-        )
-
-        state = {
-            "jd_analysis": _SAMPLE_JD_ANALYSIS,
-            "relevant_chunks": [],
-            "resume_sections": [
-                {"type": "experience", "content": "Led backend team."},
-                {"type": "skills_summary", "content": "Python, AWS"},
-            ],
-        }
-        with patch.object(
-            ResumeRewriterAgent,
-            "execute",
-            return_value=_VALID_REWRITER_JSON,
-        ):
-            agent = ResumeRewriterAgent()
+        with patch.object(ATSScorerAgent, "execute", return_value=_VALID_ATS_JSON):
+            agent = ATSScorerAgent()
             result = agent.run(state)
-        assert "optimized_sections" in result
-        assert result["optimized_sections"]["experience"]
+        assert "ats_score" in result
+        assert result["ats_score"] == 0.82
+        assert "score_breakdown" in result
+        assert "token_usage" in result
+        assert "ats_scorer" in result["token_usage"]
+
+    def test_run_rule_based_path_when_confidence_high(self) -> None:
+        """run() uses rule-based scores and zero tokens when confidence >= threshold."""
+        from optimization.infrastructure.agents.ats_scorer import ATSScorerAgent
+
+        state = {
+            "jd_analysis": _SAMPLE_JD_ANALYSIS,
+            "optimized_sections": {
+                "experience": ["Python and AWS used here"] * 3,
+                "skills_summary": ["Python", "AWS", "Docker"],
+                "projects": [],
+            },
+        }
+        with patch("optimization.infrastructure.agents.ats_scorer.get_settings") as gs:
+            gs.return_value.ats_scorer_model = "gpt-4o-mini"
+            gs.return_value.ats_scorer_temperature = 0.0
+            gs.return_value.ats_scorer_rule_confidence_threshold = 0.5
+            agent = ATSScorerAgent()
+            result = agent.run(state)
+        assert "ats_score" in result
+        assert "score_breakdown" in result
+        assert result["token_usage"]["ats_scorer"] == 0
 
 
-class TestResumeRewriterNode:
-    """Tests for resume_rewriter_node as LangGraph node."""
+class TestATSScorerNode:
+    """Tests for ats_scorer_node as LangGraph node."""
 
-    def test_resume_rewriter_node_returns_partial_state_with_optimized_sections(
-        self,
-    ) -> None:
-        """resume_rewriter_node returns dict with optimized_sections."""
-        from optimization.infrastructure.agents.resume_rewriter import (
-            ResumeRewriterAgent,
-            resume_rewriter_node,
+    def test_node_returns_partial_state_with_ats_score(self) -> None:
+        """ats_scorer_node returns dict with ats_score and score_breakdown."""
+        from optimization.infrastructure.agents.ats_scorer import (
+            ATSScorerAgent,
+            ats_scorer_node,
         )
 
         state = {
             "jd_analysis": _SAMPLE_JD_ANALYSIS,
-            "relevant_chunks": _SAMPLE_REWRITER_CHUNKS,
+            "optimized_sections": _SAMPLE_OPTIMIZED_SECTIONS,
         }
         with patch.object(
-            ResumeRewriterAgent,
+            ATSScorerAgent,
             "execute",
-            return_value=_VALID_REWRITER_JSON,
+            return_value=_VALID_ATS_JSON,
         ):
-            result = resume_rewriter_node(state)
+            result = ats_scorer_node(state)
 
-        assert "optimized_sections" in result
-        assert "rewrite_attempts" in result
-        assert result["rewrite_attempts"] == 1
+        assert "ats_score" in result
+        assert "score_breakdown" in result
         assert "token_usage" in result

@@ -228,6 +228,7 @@ def build_optimization_graph():  # type: ignore[no-untyped-def]
     graph = StateGraph(OptimizationState)
 
     # --- Register nodes ---
+    from optimization.infrastructure.agents.ats_scorer import ats_scorer_node
     from optimization.infrastructure.agents.jd_analyzer import (
         jd_analyzer_node,
     )
