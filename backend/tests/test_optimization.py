@@ -12,7 +12,7 @@ Covers:
     - A2 BaseAgent, score_check_router, result_aggregator_node
     - A3 JDAnalyzerAgent and jd_analyzer_node
     - A4 RAGRetrieverAgent and rag_retriever_node
-    - A6 ATSScorerAgent and ats_scorer_node
+    - A5 ResumeRewriterAgent and resume_rewriter_node
 """
 
 import uuid
