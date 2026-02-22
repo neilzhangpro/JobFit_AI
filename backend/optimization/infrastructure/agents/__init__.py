@@ -37,6 +37,10 @@ def __getattr__(name: str) -> Any:
         from optimization.infrastructure.agents import resume_rewriter
 
         return getattr(resume_rewriter, name)
+    if name in ("ATSScorerAgent", "ats_scorer_node"):
+        from optimization.infrastructure.agents import ats_scorer
+
+        return getattr(ats_scorer, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
@@ -50,6 +54,8 @@ __all__ = [
     "rag_retriever_node",
     "ResumeRewriterAgent",
     "resume_rewriter_node",
+    "ATSScorerAgent",
+    "ats_scorer_node",
     # State schema types
     "OptimizationState",
     "JDAnalysisDict",
