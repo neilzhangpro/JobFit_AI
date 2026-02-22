@@ -50,6 +50,13 @@ def _clamp(value: float) -> float:
     return max(0.0, min(1.0, float(value)))
 
 
+def _safe_keyword(s: Any) -> str | None:
+    """Return lowercased keyword string if s is a non-empty string, else None."""
+    if isinstance(s, str) and s.strip():
+        return s.strip().lower()
+    return None
+
+
 def _rule_based_keyword_score(
     jd_analysis: JDAnalysisDict,
     optimized_sections: dict[str, list[str]],
@@ -58,15 +65,17 @@ def _rule_based_keyword_score(
     keywords: set[str] = set()
     for key in ("hard_skills", "soft_skills", "responsibilities", "qualifications"):
         raw = jd_analysis.get(key)
-        items: list[str] = raw if isinstance(raw, list) else []
+        items: list[Any] = raw if isinstance(raw, list) else []
         for item in items:
-            if isinstance(item, str) and item.strip():
-                keywords.add(item.strip().lower())
+            kw = _safe_keyword(item)
+            if kw is not None:
+                keywords.add(kw)
     weights_raw = jd_analysis.get("keyword_weights")
     weights: dict[str, float] = weights_raw if isinstance(weights_raw, dict) else {}
     for k in weights:
-        if isinstance(k, str) and k.strip():
-            keywords.add(k.strip().lower())
+        kw = _safe_keyword(k)
+        if kw is not None:
+            keywords.add(kw)
     if not keywords:
         return 0.5
     text_parts: list[str] = []
@@ -148,12 +157,16 @@ class ATSScorerAgent(BaseAgent):
                 "ATSScorerAgent requires optimized_sections from Resume Rewriter"
             )
         jd: JDAnalysisDict = jd_analysis
+        jd_subset = {
+            "hard_skills": jd.get("hard_skills", []),
+            "soft_skills": jd.get("soft_skills", []),
+            "responsibilities": jd.get("responsibilities", []),
+            "keyword_weights": jd.get("keyword_weights", {}),
+        }
+        jd_str = json.dumps(jd_subset, indent=2)
         sections_str = json.dumps(optimized_sections, indent=2)
         return f"""## JD Requirements
-Hard Skills: {jd.get("hard_skills", [])}
-Soft Skills: {jd.get("soft_skills", [])}
-Responsibilities: {jd.get("responsibilities", [])}
-Keyword Weights: {jd.get("keyword_weights", {{}})}
+{jd_str}
 
 ## Optimized Resume Sections
 {sections_str}
